@@ -104,6 +104,39 @@ else
     ok "Installed via pip"
 fi
 
+# ── Install Node.js + agent-browser (for headless browser tools) ────
+if command -v node &>/dev/null; then
+    ok "Node.js: $(node --version)"
+else
+    info "Installing Node.js (needed for browser tools)..."
+    if [ "$PLATFORM" = "macos" ] && command -v brew &>/dev/null; then
+        brew install node
+    elif command -v apt-get &>/dev/null; then
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y nodejs
+    else
+        warn "Could not install Node.js automatically. Browser tools won't work."
+        warn "Install manually: https://nodejs.org/"
+    fi
+fi
+
+if command -v node &>/dev/null; then
+    if command -v agent-browser &>/dev/null; then
+        ok "agent-browser already installed"
+    else
+        info "Installing agent-browser (headless Chromium for browser tools)..."
+        npm install -g agent-browser 2>/dev/null && agent-browser install 2>/dev/null
+        if command -v agent-browser &>/dev/null; then
+            ok "agent-browser installed"
+        else
+            warn "agent-browser install failed. Browser tools won't work, but everything else will."
+            warn "Try manually: npm install -g agent-browser && agent-browser install"
+        fi
+    fi
+fi
+
 # ── Create config directory ─────────────────────────────────────────
 FINARG_HOME="$HOME/.finarg"
 mkdir -p "$FINARG_HOME/skills"
