@@ -118,6 +118,10 @@ class RipioTradeClient(BaseAPIClient):
         """Get user wallet address for a given currency/network."""
         return await self._get("/trade/wallets", params={"currency": currency})
 
+    async def get_ripio_wallet_balances(self) -> list[dict]:
+        """Get balances from Ripio Wallet (not trading account)."""
+        return await self._get("/trade/ripio-wallet/balance")  # type: ignore[return-value]
+
     async def create_withdrawal(
         self,
         currency: str,

@@ -76,15 +76,20 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 
 ## What Can It Do?
 
-### Built-in Tools (17)
+### Built-in Tools (22)
 
 | Toolset | Tool | What it does |
 |---------|------|-------------|
-| **wallet** | `get_balances` | Show all crypto balances in your Ripio wallet |
+| **wallet** | `get_balances` | Show all crypto balances in your Ripio Trade account |
 | | `get_deposit_address` | Get a deposit address for any supported coin |
 | **transfer** | `withdraw_crypto` | Send crypto to an external address (with confirmation) |
 | **market_data** | `get_ticker` | Current price and 24h stats for any trading pair |
 | | `get_dolar_rates` | Argentine dollar rates from BCRA (oficial, blue, MEP) |
+| **terminal** | `terminal` | Execute shell commands and scripts |
+| **file** | `read_file` | Read a file with line numbers and pagination |
+| | `write_file` | Write content to a file |
+| | `patch` | Find-and-replace in a file |
+| | `search_files` | Search file contents with regex |
 | **web** | `web_search` | Search the web via DuckDuckGo (no API key needed) |
 | | `read_webpage` | Fetch a URL and convert to clean markdown |
 | **browser** | `browser_navigate` | Open a URL in headless Chromium |
@@ -94,26 +99,38 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 | | `browser_scroll` | Scroll the page up or down |
 | | `browser_back` | Navigate back |
 | | `browser_close` | Close the browser session |
-| **skills** | `create_skill` | Write and register a new tool on the fly |
-| | `list_skills` | Show all user-created skills |
-| | `delete_skill` | Remove a skill |
+| **skills** | `skills_list` | List all available skills with descriptions |
+| | `skill_view` | Load full instructions from a skill |
+| | `skill_manage` | Create, edit, patch, or delete skills |
 
 ### Self-Extending Skills
 
-This is the killer feature. The agent can **create its own tools** when you ask:
+This is the killer feature. The agent can **create its own knowledge** when you ask:
 
 ```
-You: "Create a skill to place limit orders on Ripio"
+You: "Investigá cómo transferir de mi wallet a trade en Ripio y creá un skill"
 
-Finarg: I'll create a skill called `ripio_limit_orders`...
-        ✓ Validated syntax
-        ✓ Written to ~/.finarg/skills/ripio_limit_orders.py
-        ✓ Hot-loaded into registry
+Finarg: → web_search("ripio api wallet to trade transfer")
+        → read_webpage(endpoint docs)
+        → skill_manage(create, "ripio-wallet-transfer", instructions)
+        ✓ Skill created at ~/.finarg/skills/ripio-wallet-transfer/SKILL.md
 
-        You can now say "place a limit buy for 0.01 BTC at $65,000"
+        Next time you ask, I'll read the skill and execute it.
 ```
 
-Skills are plain Python files in `~/.finarg/skills/`. They persist across sessions and load automatically on startup. The agent validates syntax before saving, and you can review/edit them manually.
+Skills are SKILL.md documents (YAML frontmatter + markdown) — not code. They capture **how to do a task**: which endpoint to call, what parameters to use, what to watch out for. The agent reads the skill and executes scripts via `terminal` following the instructions.
+
+```
+~/.finarg/skills/
+├── ripio-wallet-transfer/
+│   └── SKILL.md           # Instructions for wallet ↔ trade transfers
+├── mercadopago-qr/
+│   ├── SKILL.md           # How to process QR payments
+│   └── references/
+│       └── api-docs.md    # Supporting documentation
+```
+
+Skills persist across sessions. On startup, the agent sees an index of all available skills and can load any of them with `skill_view`.
 
 ---
 
@@ -121,35 +138,39 @@ Skills are plain Python files in `~/.finarg/skills/`. They persist across sessio
 
 ```
 ┌─────────────────────────────────────────┐
-│            Terminal UI (Textual)         │
-│  Ticker · Balances · Chat · Charts      │
+│            Chat Interface               │
 └──────────────────┬──────────────────────┘
                    │
 ┌──────────────────▼──────────────────────┐
 │            FinargAgent                   │
 │  LLM call → tool calls → execute → loop │
+│                                          │
+│  SOUL.md (personality)                   │
+│  prompt_builder.py (technical guidance)  │
 └──────────────────┬──────────────────────┘
                    │
 ┌──────────────────▼──────────────────────┐
-│            ToolRegistry                  │
-│  Built-in tools + hot-loaded skills      │
+│            ToolRegistry (22 tools)       │
 ├────────────────┬────────────────────────┤
-│  API Clients   │  User Skills (SKILL.md) │
-│  · Ripio Trade │  ~/.finarg/skills/*/    │
-│  · BCRA        │  Auto-created by agent  │
+│  Built-in      │  Skills (SKILL.md)     │
+│  · Ripio API   │  ~/.finarg/skills/*/   │
+│  · BCRA API    │  Created by the agent  │
+│  · Terminal    │  Read on demand via     │
+│  · File ops    │  skill_view            │
+│  · Web/Browser │                        │
 ├────────────────┴────────────────────────┤
 │  SQLite (sessions + transaction log)     │
 └─────────────────────────────────────────┘
 ```
 
-**Key design decisions:**
+**Architecture follows [Hermes Agent](https://github.com/nousresearch/hermes-agent):**
 
-- **Fully async** — httpx + asyncio throughout
-- **Tool registry pattern** — tools self-register at import time
-- **Skills = documents** — SKILL.md files with YAML frontmatter (like Hermes), not executable code
-- **HMAC-SHA256 auth** — Ripio Trade API signing implemented correctly per their spec
-- **Confirmation flow** — withdraw_crypto never executes without explicit user approval (enforced at prompt level via SOUL.md)
-- **Provider abstraction** — swap between Anthropic, OpenAI, or any OpenAI-compatible endpoint
+- **SOUL.md** — personality only (like Hermes)
+- **prompt_builder.py** — technical guidance as constants: tool usage, skills guidance, script execution patterns, tool-use enforcement (like Hermes)
+- **Skills = SKILL.md documents** — YAML frontmatter + markdown instructions, not executable code (like Hermes)
+- **Tool registry** — tools self-register at import time with check_fn availability checks (like Hermes)
+- **Terminal** — agent executes scripts via subprocess, reusing authenticated API clients (like Hermes)
+- **Provider abstraction** — Anthropic, OpenAI, or any OpenAI-compatible endpoint (Moonshot/Kimi)
 
 ---
 
@@ -217,7 +238,7 @@ Also supports `AGENTS.md` and `CLAUDE.md` (for compatibility with other tools). 
 
 ## Contributing
 
-Contributions welcome! Clone and install in dev mode:
+Contributions welcome! Fork the repo, create a branch, and open a PR.
 
 ```bash
 git clone https://github.com/Gantalf/finarg.git
@@ -225,6 +246,21 @@ cd finarg
 pip install -e ".[dev]"
 finarg version
 ```
+
+### How to contribute
+
+1. **Fork** the repo on GitHub
+2. **Clone** your fork: `git clone https://github.com/YOUR_USER/finarg.git`
+3. **Create a branch**: `git checkout -b my-feature`
+4. **Make changes** and test locally
+5. **Push** and open a **Pull Request** against `main`
+
+### Ideas for contributions
+
+- New API clients (MercadoPago, Binance, Bitso)
+- New built-in tools
+- Skills packs (collections of SKILL.md for common workflows)
+- Bug fixes and documentation improvements
 
 ---
 
