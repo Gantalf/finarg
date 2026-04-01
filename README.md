@@ -72,13 +72,15 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 
 ---
 
-## Built-in Tools (23)
+## Built-in Tools (25)
 
 | Toolset | Tool | What it does |
 |---------|------|-------------|
 | **wallet** | `get_balances` | Crypto balances in your Ripio Trade account |
+| | `get_wallet_balances` | Crypto balances in your Ripio Wallet (app) |
 | | `get_deposit_address` | Deposit address for any supported coin |
-| **transfer** | `withdraw_crypto` | Send crypto to an external address (with confirmation) |
+| | `wallet_transfer` | Move funds between Wallet and Trade (both directions) |
+| **transfer** | `withdraw_crypto` | Send crypto to an external wallet address (with confirmation) |
 | **market_data** | `get_ticker` | Price and 24h stats for any trading pair |
 | | `get_dolar_rates` | Argentine dollar rates from BCRA (oficial, blue, MEP) |
 | **terminal** | `terminal` | Execute shell commands and scripts |
