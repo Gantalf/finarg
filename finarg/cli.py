@@ -34,9 +34,11 @@ def main() -> None:
         _run_config(args[1:])
     elif args[0] == "uninstall":
         _run_uninstall()
+    elif args[0] == "update":
+        _run_update()
     else:
         console.print(f"[red]Unknown command:[/] {args[0]}")
-        console.print("Usage: finarg [init|chat|config|uninstall|version]")
+        console.print("Usage: finarg [init|chat|config|update|uninstall|version]")
         sys.exit(1)
 
 
@@ -209,6 +211,28 @@ def _run_config(args: list[str]) -> None:
         console.print("  finarg config edit          Edit config.yaml in $EDITOR")
         console.print("  finarg config edit secrets  Edit .env in $EDITOR")
         console.print("  finarg config set KEY=VAL   Set a secret in .env")
+
+
+def _run_update() -> None:
+    """Update Finarg to the latest version."""
+    import subprocess
+
+    from finarg import __version__
+
+    console.print(f"  Current version: [bold]{__version__}[/]")
+    console.print("  Updating from GitHub...")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--force-reinstall",
+         "git+https://github.com/Gantalf/finarg.git"],
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode == 0:
+        console.print("  [#00ff88]\u2713 Updated successfully.[/] Restart finarg to use the new version.")
+    else:
+        console.print(f"  [#ff4444]\u2717 Update failed:[/] {result.stderr.splitlines()[-1] if result.stderr else 'unknown error'}")
 
 
 def _run_uninstall() -> None:
