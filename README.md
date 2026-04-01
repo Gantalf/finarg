@@ -18,7 +18,7 @@ It's not just a chatbot with tools. It's a **self-extending agent**: ask it to l
 <tr><td><b>Argentine market data</b></td><td>Dollar oficial, blue, MEP from BCRA. Crypto tickers from Ripio. Always know the real rate.</td></tr>
 <tr><td><b>Safe by design</b></td><td>Every transfer requires explicit confirmation. The agent shows you amount, address, and fees before executing anything.</td></tr>
 <tr><td><b>Self-extending skills</b></td><td>Ask it to "create a skill for limit orders" — it writes a Python tool, validates it, hot-loads it into the registry. No restart needed.</td></tr>
-<tr><td><b>Bloomberg-inspired TUI</b></td><td>Dark terminal UI with live ticker bar, balance tables, braille sparkline charts, streaming AI responses, and a command palette.</td></tr>
+<tr><td><b>Clean terminal chat</b></td><td>Rich formatted output with markdown, tool call indicators, and streaming responses.</td></tr>
 <tr><td><b>Session persistence</b></td><td>SQLite-backed conversation history and transaction audit log. Pick up where you left off.</td></tr>
 <tr><td><b>Any LLM provider</b></td><td>Anthropic (Claude), OpenAI, Moonshot/Kimi — switch providers without changing code.</td></tr>
 </table>
@@ -47,7 +47,7 @@ After installation:
 ```bash
 source ~/.bashrc    # reload shell (or: source ~/.zshrc)
 finarg init         # setup wizard — configure API keys
-finarg              # launch the terminal UI
+finarg              # start chatting
 ```
 
 ---
@@ -55,9 +55,8 @@ finarg              # launch the terminal UI
 ## Getting Started
 
 ```bash
-finarg              # Launch the full terminal UI
+finarg              # Start chatting with the agent
 finarg init         # Interactive setup wizard (LLM + Ripio keys)
-finarg chat         # Simple chat mode (no TUI, just text)
 finarg config       # Show current config and secrets (masked)
 finarg config set KEY=VALUE   # Set a secret in .env
 finarg config edit            # Edit config.yaml in $EDITOR

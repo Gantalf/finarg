@@ -20,12 +20,10 @@ def main() -> None:
     """Main entry point."""
     args = sys.argv[1:]
 
-    if not args:
-        _run_tui()
+    if not args or (args and args[0] == "chat"):
+        asyncio.run(_run_chat())
     elif args[0] == "init":
         _run_init()
-    elif args[0] == "chat":
-        asyncio.run(_run_chat())
     elif args[0] == "version":
         from finarg import __version__
 
