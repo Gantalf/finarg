@@ -32,9 +32,11 @@ def main() -> None:
         console.print(f"Finarg v{__version__}")
     elif args[0] == "config":
         _run_config(args[1:])
+    elif args[0] == "uninstall":
+        _run_uninstall()
     else:
         console.print(f"[red]Unknown command:[/] {args[0]}")
-        console.print("Usage: finarg [init|chat|config|version]")
+        console.print("Usage: finarg [init|chat|config|uninstall|version]")
         sys.exit(1)
 
 
@@ -207,6 +209,61 @@ def _run_config(args: list[str]) -> None:
         console.print("  finarg config edit          Edit config.yaml in $EDITOR")
         console.print("  finarg config edit secrets  Edit .env in $EDITOR")
         console.print("  finarg config set KEY=VAL   Set a secret in .env")
+
+
+def _run_uninstall() -> None:
+    """Completely remove Finarg: config, data, and the package itself."""
+    import shutil
+    import subprocess
+
+    console.print()
+    console.print(
+        Panel(
+            "[bold #ff4444]Uninstall Finarg[/]\n"
+            "[#8892b0]This will remove all config, secrets, skills, and data.[/]",
+            border_style="#ff4444",
+            padding=(1, 4),
+        )
+    )
+    console.print()
+
+    # Show what will be deleted
+    if FINARG_HOME.exists():
+        console.print(f"  [#ff4444]\u2717[/] Delete {FINARG_HOME}/ (config, secrets, skills, sessions)")
+    else:
+        console.print(f"  [#8892b0]-[/] {FINARG_HOME}/ not found")
+
+    console.print(f"  [#ff4444]\u2717[/] Uninstall finarg Python package")
+    console.print()
+
+    confirm = Confirm.ask("  Are you sure?", default=False)
+    if not confirm:
+        console.print("  [#8892b0]Cancelled.[/]")
+        return
+
+    # Delete ~/.finarg/
+    if FINARG_HOME.exists():
+        shutil.rmtree(FINARG_HOME)
+        console.print(f"  [#00ff88]\u2713[/] Deleted {FINARG_HOME}/")
+
+    # Uninstall the package
+    console.print("  Uninstalling finarg package...")
+    subprocess.run(
+        [sys.executable, "-m", "pip", "uninstall", "finarg", "-y"],
+        capture_output=True,
+    )
+    console.print(f"  [#00ff88]\u2713[/] Package uninstalled")
+
+    console.print()
+    console.print(
+        Panel(
+            "[bold #00ff88]Finarg completely removed.[/]\n"
+            "To reinstall:\n"
+            "  curl -fsSL https://raw.githubusercontent.com/Gantalf/finarg/main/scripts/install.sh | bash",
+            border_style="#00ff88",
+            padding=(1, 4),
+        )
+    )
 
 
 def _run_tui() -> None:

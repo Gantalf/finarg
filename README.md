@@ -55,9 +55,14 @@ finarg              # launch the terminal UI
 ## Getting Started
 
 ```bash
-finarg init         # Interactive setup wizard (LLM + Ripio keys)
 finarg              # Launch the full terminal UI
+finarg init         # Interactive setup wizard (LLM + Ripio keys)
 finarg chat         # Simple chat mode (no TUI, just text)
+finarg config       # Show current config and secrets (masked)
+finarg config set KEY=VALUE   # Set a secret in .env
+finarg config edit            # Edit config.yaml in $EDITOR
+finarg config edit secrets    # Edit .env in $EDITOR
+finarg uninstall    # Completely remove Finarg (config, data, package)
 finarg version      # Check installed version
 ```
 
@@ -72,18 +77,27 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 
 ## What Can It Do?
 
-### Built-in Tools (8)
+### Built-in Tools (17)
 
-| Tool | What it does |
-|------|-------------|
-| `get_balances` | Show all crypto balances in your Ripio wallet |
-| `get_deposit_address` | Get a deposit address for any supported coin |
-| `withdraw_crypto` | Send crypto to an external address (with confirmation) |
-| `get_ticker` | Current price and 24h stats for any trading pair |
-| `get_dolar_rates` | Argentine dollar rates from BCRA (oficial, blue, MEP) |
-| `create_skill` | Write and register a new tool on the fly |
-| `list_skills` | Show all user-created skills |
-| `delete_skill` | Remove a skill |
+| Toolset | Tool | What it does |
+|---------|------|-------------|
+| **wallet** | `get_balances` | Show all crypto balances in your Ripio wallet |
+| | `get_deposit_address` | Get a deposit address for any supported coin |
+| **transfer** | `withdraw_crypto` | Send crypto to an external address (with confirmation) |
+| **market_data** | `get_ticker` | Current price and 24h stats for any trading pair |
+| | `get_dolar_rates` | Argentine dollar rates from BCRA (oficial, blue, MEP) |
+| **web** | `web_search` | Search the web via DuckDuckGo (no API key needed) |
+| | `read_webpage` | Fetch a URL and convert to clean markdown |
+| **browser** | `browser_navigate` | Open a URL in headless Chromium |
+| | `browser_snapshot` | Get page accessibility tree (elements with refs) |
+| | `browser_click` | Click an element by ref (e.g. @e5) |
+| | `browser_type` | Type text into an input field |
+| | `browser_scroll` | Scroll the page up or down |
+| | `browser_back` | Navigate back |
+| | `browser_close` | Close the browser session |
+| **skills** | `create_skill` | Write and register a new tool on the fly |
+| | `list_skills` | Show all user-created skills |
+| | `delete_skill` | Remove a skill |
 
 ### Self-Extending Skills
 
