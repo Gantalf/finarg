@@ -7,7 +7,6 @@ CONFIG_FILE = FINARG_HOME / "config.yaml"
 ENV_FILE = FINARG_HOME / ".env"
 SKILLS_DIR = FINARG_HOME / "skills"
 DB_FILE = FINARG_HOME / "finarg.db"
-SESSIONS_DIR = FINARG_HOME / "sessions"
 SOUL_FILE = Path(__file__).parent / "SOUL.md"
 
 DEFAULT_MODEL = "claude-sonnet-4-20250514"

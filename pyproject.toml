@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [{ name = "Gantalf" }]
-keywords = ["ai", "finance", "crypto", "argentina", "agent", "tui"]
+keywords = ["ai", "finance", "crypto", "argentina", "agent"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -25,7 +25,6 @@ dependencies = [
     "anthropic>=0.40",
     "openai>=1.0",
     "pydantic>=2.0",
-    "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
     "tenacity>=8.0",
     "ddgs>=7.0",

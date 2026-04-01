@@ -11,11 +11,3 @@ apis:
     rate_limit: 1.0
   bcra:
     enabled: true
-
-tui:
-  theme: dark
-  ticker_pairs:
-    - BTC_USDT
-    - ETH_USDT
-    - USDT_ARS
-  refresh_interval: 30

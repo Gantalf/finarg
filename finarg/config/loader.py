@@ -31,17 +31,10 @@ class APIsConfig(BaseModel):
     bcra: APIConfig = Field(default_factory=APIConfig)
 
 
-class TUIConfig(BaseModel):
-    theme: str = "dark"
-    ticker_pairs: list[str] = Field(default_factory=lambda: ["BTC_USDT", "ETH_USDT", "USDT_ARS"])
-    refresh_interval: int = 30
-
-
 class FinargConfig(BaseModel):
     model: ModelConfig = Field(default_factory=ModelConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     apis: APIsConfig = Field(default_factory=APIsConfig)
-    tui: TUIConfig = Field(default_factory=TUIConfig)
 
     # Resolved from environment after loading
     anthropic_api_key: Optional[str] = None

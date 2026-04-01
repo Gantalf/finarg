@@ -84,7 +84,7 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 | **terminal** | `terminal` | Execute shell commands and scripts |
 | **file** | `read_file` | Read a file with line numbers and pagination |
 | | `write_file` | Write content to a file |
-| | `patch` | Find-and-replace in a file |
+| | `patch_file` | Find-and-replace in a file |
 | | `search_files` | Search file contents with regex |
 | **web** | `web_search` | Search the web via DuckDuckGo (no API key needed) |
 | | `read_webpage` | Fetch a URL and convert to clean markdown |
@@ -241,6 +241,7 @@ agent:
 apis:
   ripio_trade:
     enabled: true
+    rate_limit: 1.0
   bcra:
     enabled: true
 ```
