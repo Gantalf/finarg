@@ -4,22 +4,20 @@
   <br>
   <em>AI-Powered Financial Agent for Argentina & LATAM</em>
   <br><br>
-  <a href="https://github.com/Gantalf/finarg/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: AGPL-3.0"></a>
+  <a href="https://github.com/Gantalf/finarg/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
   <a href="https://github.com/Gantalf/finarg"><img src="https://img.shields.io/badge/Python-3.11+-green?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"></a>
   <a href="https://github.com/Gantalf/finarg/issues"><img src="https://img.shields.io/badge/Issues-GitHub-red?style=for-the-badge&logo=github" alt="Issues"></a>
 </p>
 
 **An AI agent that manages your crypto wallet, checks exchange rates, executes transfers, and builds its own new capabilities on demand.** Talk to it in natural language — it calls APIs, shows you the data, and asks for confirmation before touching your money.
 
-It's not just a chatbot with tools. It's a **self-extending agent**: ask it to learn a new skill (trading, invoicing, payments) and it writes the code, registers the tool, and makes it available — all in one conversation.
-
 <table>
-<tr><td><b>Wallet management</b></td><td>Check balances, get deposit addresses, and send crypto — all through natural language via Ripio Trade API.</td></tr>
+<tr><td><b>Wallet management</b></td><td>Check balances (trade + wallet), get deposit addresses, and send crypto via Ripio API.</td></tr>
 <tr><td><b>Argentine market data</b></td><td>Dollar oficial, blue, MEP from BCRA. Crypto tickers from Ripio. Always know the real rate.</td></tr>
-<tr><td><b>Safe by design</b></td><td>Every transfer requires explicit confirmation. The agent shows you amount, address, and fees before executing anything.</td></tr>
-<tr><td><b>Self-extending skills</b></td><td>Ask it to "create a skill for limit orders" — it writes a Python tool, validates it, hot-loads it into the registry. No restart needed.</td></tr>
-<tr><td><b>Clean terminal chat</b></td><td>Rich formatted output with markdown, tool call indicators, and streaming responses.</td></tr>
-<tr><td><b>Session persistence</b></td><td>SQLite-backed conversation history and transaction audit log. Pick up where you left off.</td></tr>
+<tr><td><b>Safe by design</b></td><td>Every transfer requires explicit confirmation. The agent shows you amount, address, and fees before executing.</td></tr>
+<tr><td><b>Self-extending</b></td><td>The agent researches APIs, creates skills (SKILL.md documents), and executes scripts — learning new capabilities without code changes.</td></tr>
+<tr><td><b>Persistent memory</b></td><td>Remembers your name, preferences, and context across sessions. Never asks the same thing twice.</td></tr>
+<tr><td><b>Bundled skills</b></td><td>Comes with ARCA (ex AFIP) electronic invoicing skill pre-installed. Just configure your certificates.</td></tr>
 <tr><td><b>Any LLM provider</b></td><td>Anthropic (Claude), OpenAI, Moonshot/Kimi — switch providers without changing code.</td></tr>
 </table>
 
@@ -31,15 +29,14 @@ It's not just a chatbot with tools. It's a **self-extending agent**: ask it to l
 curl -fsSL https://raw.githubusercontent.com/Gantalf/finarg/main/scripts/install.sh | bash
 ```
 
-Works on Linux, macOS, and WSL2. The installer handles Python, pip, and the `finarg` command. No prerequisites except git.
+Works on Linux, macOS, and WSL2. The installer handles Python, Node.js (for browser tools), pip, and the `finarg` command.
 
 > **Windows:** Native Windows is not supported. Please install [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) and run the command above.
 
 **Or install manually:**
 
 ```bash
-pip install finarg          # from PyPI (when published)
-pip install git+https://github.com/Gantalf/finarg.git   # from GitHub
+pip install git+https://github.com/Gantalf/finarg.git
 ```
 
 After installation:
@@ -52,17 +49,18 @@ finarg              # start chatting
 
 ---
 
-## Getting Started
+## Commands
 
 ```bash
-finarg              # Start chatting with the agent
-finarg init         # Interactive setup wizard (LLM + Ripio keys)
-finarg config       # Show current config and secrets (masked)
+finarg                        # Start chatting with the agent
+finarg init                   # Setup wizard (LLM + Ripio keys)
+finarg config                 # Show current config and secrets (masked)
 finarg config set KEY=VALUE   # Set a secret in .env
 finarg config edit            # Edit config.yaml in $EDITOR
 finarg config edit secrets    # Edit .env in $EDITOR
-finarg uninstall    # Completely remove Finarg (config, data, package)
-finarg version      # Check installed version
+finarg update                 # Update to latest version from GitHub
+finarg uninstall              # Completely remove Finarg (config, data, package)
+finarg version                # Check installed version
 ```
 
 On first launch, `finarg init` walks you through:
@@ -74,16 +72,14 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 
 ---
 
-## What Can It Do?
-
-### Built-in Tools (22)
+## Built-in Tools (23)
 
 | Toolset | Tool | What it does |
 |---------|------|-------------|
-| **wallet** | `get_balances` | Show all crypto balances in your Ripio Trade account |
-| | `get_deposit_address` | Get a deposit address for any supported coin |
+| **wallet** | `get_balances` | Crypto balances in your Ripio Trade account |
+| | `get_deposit_address` | Deposit address for any supported coin |
 | **transfer** | `withdraw_crypto` | Send crypto to an external address (with confirmation) |
-| **market_data** | `get_ticker` | Current price and 24h stats for any trading pair |
+| **market_data** | `get_ticker` | Price and 24h stats for any trading pair |
 | | `get_dolar_rates` | Argentine dollar rates from BCRA (oficial, blue, MEP) |
 | **terminal** | `terminal` | Execute shell commands and scripts |
 | **file** | `read_file` | Read a file with line numbers and pagination |
@@ -102,10 +98,13 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 | **skills** | `skills_list` | List all available skills with descriptions |
 | | `skill_view` | Load full instructions from a skill |
 | | `skill_manage` | Create, edit, patch, or delete skills |
+| **memory** | `memory` | Save/update/remove persistent facts across sessions |
 
-### Self-Extending Skills
+---
 
-This is the killer feature. The agent can **create its own knowledge** when you ask:
+## Skills
+
+The agent can **create its own knowledge** when you ask:
 
 ```
 You: "Investigá cómo transferir de mi wallet a trade en Ripio y creá un skill"
@@ -118,19 +117,56 @@ Finarg: → web_search("ripio api wallet to trade transfer")
         Next time you ask, I'll read the skill and execute it.
 ```
 
-Skills are SKILL.md documents (YAML frontmatter + markdown) — not code. They capture **how to do a task**: which endpoint to call, what parameters to use, what to watch out for. The agent reads the skill and executes scripts via `terminal` following the instructions.
+Skills are SKILL.md documents (YAML frontmatter + markdown instructions). They capture **how to do a task**: which endpoint to call, what parameters to use, what to watch out for. The agent reads the skill and executes scripts via `terminal`.
 
 ```
 ~/.finarg/skills/
-├── ripio-wallet-transfer/
-│   └── SKILL.md           # Instructions for wallet ↔ trade transfers
-├── mercadopago-qr/
-│   ├── SKILL.md           # How to process QR payments
-│   └── references/
-│       └── api-docs.md    # Supporting documentation
+├── arca-facturacion/          # Bundled — ARCA/AFIP electronic invoicing
+│   └── SKILL.md
+├── ripio-wallet-transfer/     # Created by agent
+│   └── SKILL.md
+└── my-custom-skill/
+    ├── SKILL.md
+    └── references/
+        └── api-docs.md
 ```
 
-Skills persist across sessions. On startup, the agent sees an index of all available skills and can load any of them with `skill_view`.
+### Bundled skills
+
+These come pre-installed with Finarg:
+
+| Skill | What it does | Prerequisites |
+|-------|-------------|---------------|
+| **arca-facturacion** | ARCA (ex AFIP) electronic invoicing via [@ramiidv/arca-sdk](https://github.com/ramiidv/arca-facturacion). Factura A/B/C/E, NC, ND, exportación, padrón, QR. | `ARCA_CUIT`, `ARCA_CERT_PATH`, `ARCA_KEY_PATH` |
+
+Skills with missing prerequisites show a warning. The agent tells you exactly what to configure:
+
+```bash
+finarg config set ARCA_CUIT=20123456789
+finarg config set ARCA_CERT_PATH=/path/to/cert.crt
+finarg config set ARCA_KEY_PATH=/path/to/key.key
+```
+
+---
+
+## Memory
+
+The agent remembers things across sessions:
+
+- **User profile** (`~/.finarg/memories/USER.md`) — your name, location, preferences
+- **Agent notes** (`~/.finarg/memories/MEMORY.md`) — environment facts, API quirks, lessons learned
+
+The agent saves to memory proactively (when you tell it your name, correct it, or share a preference). On the next session, it already knows.
+
+```
+Session 1:
+  You: "Me llamo Luciano, estoy en Buenos Aires"
+  Finarg: (saves to USER.md)
+
+Session 2:
+  You: "Cómo me llamo?"
+  Finarg: "Te llamás Luciano."
+```
 
 ---
 
@@ -150,40 +186,46 @@ Skills persist across sessions. On startup, the agent sees an index of all avail
 └──────────────────┬──────────────────────┘
                    │
 ┌──────────────────▼──────────────────────┐
-│            ToolRegistry (22 tools)       │
+│            ToolRegistry (23 tools)       │
 ├────────────────┬────────────────────────┤
 │  Built-in      │  Skills (SKILL.md)     │
 │  · Ripio API   │  ~/.finarg/skills/*/   │
-│  · BCRA API    │  Created by the agent  │
-│  · Terminal    │  Read on demand via     │
-│  · File ops    │  skill_view            │
+│  · BCRA API    │  Created by agent      │
+│  · Terminal    │  or bundled            │
+│  · File ops    │                        │
 │  · Web/Browser │                        │
+│  · Memory      │                        │
 ├────────────────┴────────────────────────┤
-│  SQLite (sessions + transaction log)     │
+│  Persistence                             │
+│  · SQLite (sessions)                     │
+│  · MEMORY.md + USER.md (memory)          │
 └─────────────────────────────────────────┘
 ```
 
-**Architecture follows [Hermes Agent](https://github.com/nousresearch/hermes-agent):**
+**Key design decisions:**
 
-- **SOUL.md** — personality only (like Hermes)
-- **prompt_builder.py** — technical guidance as constants: tool usage, skills guidance, script execution patterns, tool-use enforcement (like Hermes)
-- **Skills = SKILL.md documents** — YAML frontmatter + markdown instructions, not executable code (like Hermes)
-- **Tool registry** — tools self-register at import time with check_fn availability checks (like Hermes)
-- **Terminal** — agent executes scripts via subprocess, reusing authenticated API clients (like Hermes)
-- **Provider abstraction** — Anthropic, OpenAI, or any OpenAI-compatible endpoint (Moonshot/Kimi)
+- **SOUL.md** — personality and rules only, no technical guidance
+- **prompt_builder.py** — technical guidance as constants: tool usage, skills guidance, memory guidance, script execution patterns, tool-use enforcement
+- **Skills = documents** — SKILL.md with YAML frontmatter, not executable code. The agent reads instructions and executes via `terminal`
+- **Memory** — two files (USER.md + MEMORY.md) with char limits, frozen snapshot for prompt injection (prefix cache stability)
+- **Tool registry** — tools self-register at import time with availability checks
+- **Authenticated clients** — HMAC-SHA256 signing for Ripio API, reusable from skills via `get_trade_client()`
 
 ---
 
 ## Configuration
 
-All config lives in `~/.finarg/`:
+All data lives in `~/.finarg/`:
 
 ```
 ~/.finarg/
 ├── config.yaml          # Model, API settings
 ├── .env                 # API keys (never committed)
-├── skills/              # Skills (SKILL.md documents, created by agent)
-└── finarg.db            # SQLite (sessions + transaction log)
+├── skills/              # Skills (SKILL.md documents)
+├── memories/            # Persistent memory
+│   ├── MEMORY.md        # Agent notes
+│   └── USER.md          # User profile
+└── finarg.db            # SQLite (session history)
 ```
 
 ### Config file (`~/.finarg/config.yaml`)
@@ -191,7 +233,7 @@ All config lives in `~/.finarg/`:
 ```yaml
 model:
   default: claude-sonnet-4-20250514
-  provider: anthropic
+  provider: anthropic    # or: openai, moonshot
 
 agent:
   max_turns: 30
@@ -199,31 +241,33 @@ agent:
 apis:
   ripio_trade:
     enabled: true
-    rate_limit: 1.0
   bcra:
     enabled: true
-
-tui:
-  theme: dark
-  ticker_pairs: [BTC_USDT, ETH_USDT, USDT_ARS]
-  refresh_interval: 30
 ```
 
 ### Environment variables (`~/.finarg/.env`)
 
 ```env
+# LLM Provider (required — one of these)
 ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+MOONSHOT_API_KEY=sk-...
+
+# Ripio Trade (optional — enables wallet + transfers)
 RIPIO_TRADE_API_KEY=your-key
 RIPIO_TRADE_API_SECRET=your-secret
+
+# ARCA invoicing (optional — enables facturacion skill)
+ARCA_CUIT=20123456789
+ARCA_CERT_PATH=/path/to/cert.crt
+ARCA_KEY_PATH=/path/to/key.key
 ```
 
 ---
 
 ## Project context files
 
-You can create a `.finarg.md` file in any directory to give the agent project-specific context. When you run `finarg` from that directory, the agent reads it automatically.
-
-Example `.finarg.md`:
+Create a `.finarg.md` file in any directory to give the agent project-specific context. The agent reads it automatically when you run `finarg` from that directory.
 
 ```markdown
 # My trading setup
@@ -232,7 +276,7 @@ Example `.finarg.md`:
 - Transfers go to wallet 0x1234...
 ```
 
-Also supports `AGENTS.md` and `CLAUDE.md` (for compatibility with other tools). Files are capped at 20,000 chars.
+Also supports `AGENTS.md` and `CLAUDE.md`. Files are capped at 20,000 chars.
 
 ---
 
@@ -259,7 +303,7 @@ finarg version
 
 - New API clients (MercadoPago, Binance, Bitso)
 - New built-in tools
-- Skills packs (collections of SKILL.md for common workflows)
+- Bundled skill packs (collections of SKILL.md for common workflows)
 - Bug fixes and documentation improvements
 
 ---
@@ -268,10 +312,9 @@ finarg version
 
 The agent can build its own features via skills, but these are planned as built-in:
 
-- [ ] Trading (limit/market orders, swaps via Ripio B2B)
+- [ ] Trading (limit/market orders, swaps)
 - [ ] Fiat on/off ramp (buy/sell crypto with ARS)
 - [ ] Wire transfers and QR payments
-- [ ] AFIP/ARCA electronic invoicing
 - [ ] Scheduled/recurring payments
 - [ ] Telegram and WhatsApp gateway
 - [ ] MercadoPago integration
