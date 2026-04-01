@@ -63,6 +63,17 @@ SCRIPT_EXECUTION_GUIDANCE = (
     "If credentials are missing, tell the user to configure them with `finarg config set KEY=VALUE`."
 )
 
+MEMORY_GUIDANCE = (
+    "## Memory guidance\n"
+    "You have persistent memory across sessions. Save durable facts using the memory "
+    "tool: user preferences, environment details, tool quirks, and stable conventions.\n"
+    "Memory is injected into every turn, so keep it compact and focused on facts that "
+    "will still matter later.\n"
+    "Prioritize what reduces future user steering — the most valuable memory is one "
+    "that prevents the user from having to correct or remind you again.\n"
+    "Do NOT save task progress, session outcomes, or temporary state to memory."
+)
+
 TOOL_USE_ENFORCEMENT = (
     "## Tool-use enforcement\n"
     "You MUST use your tools to take action — do not describe what you would do "
@@ -79,9 +90,14 @@ TOOL_USE_ENFORCEMENT = (
 def build_system_prompt(
     soul_path: Path | None = None,
     tools_summary: str = "",
-    memory: str = "",
+    memory_store: Any = None,
 ) -> str:
-    """Build the full system prompt from SOUL.md, guidance, skills, context, and memory."""
+    """Build the full system prompt from SOUL.md, guidance, skills, context, and memory.
+
+    Args:
+        memory_store: Optional MemoryStore instance. If provided, its frozen
+            snapshot is injected into the prompt.
+    """
     soul_path = soul_path or SOUL_FILE
     parts: list[str] = []
 
@@ -102,6 +118,7 @@ def build_system_prompt(
     # Technical guidance (constant sections)
     parts.append(TOOL_GUIDANCE)
     parts.append(SKILLS_GUIDANCE)
+    parts.append(MEMORY_GUIDANCE)
     parts.append(SCRIPT_EXECUTION_GUIDANCE)
     parts.append(TOOL_USE_ENFORCEMENT)
 
@@ -119,9 +136,14 @@ def build_system_prompt(
     if context:
         parts.append(context)
 
-    # Memory
-    if memory:
-        parts.append(f"## Memory\n{memory}")
+    # Persistent memory (frozen snapshot from session start)
+    if memory_store is not None:
+        mem_block = memory_store.format_for_system_prompt("memory")
+        if mem_block:
+            parts.append(mem_block)
+        user_block = memory_store.format_for_system_prompt("user")
+        if user_block:
+            parts.append(user_block)
 
     return "\n\n".join(parts)
 

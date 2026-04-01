@@ -42,4 +42,8 @@ TOOLSETS: dict[str, dict[str, object]] = {
         "description": "Skill management and discovery",
         "tools": ["skills_list", "skill_view", "skill_manage"],
     },
+    "memory": {
+        "description": "Persistent memory across sessions",
+        "tools": ["memory"],
+    },
 }

@@ -29,11 +29,13 @@ class FinargAgent:
         provider: LLMProvider,
         registry: ToolRegistry,
         session_store: SessionStore,
+        memory_store=None,
     ) -> None:
         self._config = config
         self._provider = provider
         self._registry = registry
         self._session_store = session_store
+        self._memory_store = memory_store
 
     @property
     def config(self) -> FinargConfig:
@@ -62,7 +64,7 @@ class FinargAgent:
 
         # 3. Build system prompt
         tools_summary = self._build_tools_summary()
-        system = build_system_prompt(tools_summary=tools_summary)
+        system = build_system_prompt(tools_summary=tools_summary, memory_store=self._memory_store)
 
         # 4. Get tool definitions for the provider
         tool_defs = self._registry.get_definitions()

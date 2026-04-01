@@ -386,7 +386,7 @@ def _build_agent(config):
     # Import here to avoid circular imports
     from finarg.agent.loop import FinargAgent
     from finarg.agent.session import SessionStore
-    from finarg.constants import DB_FILE, SKILLS_DIR
+    from finarg.constants import DB_FILE, FINARG_HOME, SKILLS_DIR
     from finarg.tools.registry import registry
 
     # Load built-in tools (matches Hermes _discover_tools pattern)
@@ -410,6 +410,15 @@ def _build_agent(config):
     register_skill_manager_tools()
     register_skills_tools()
 
+    # Memory
+    from finarg.tools.memory import MemoryStore, register_memory_tools, set_memory_store
+
+    memory_dir = FINARG_HOME / "memories"
+    memory_store = MemoryStore(memory_dir)
+    memory_store.load_from_disk()
+    set_memory_store(memory_store)
+    register_memory_tools()
+
     # Build the right provider based on config
     llm_provider = _build_provider(config.model.provider, api_key, config.model.default)
 
@@ -420,6 +429,7 @@ def _build_agent(config):
         provider=llm_provider,
         registry=registry,
         session_store=session_store,
+        memory_store=memory_store,
     )
 
 
