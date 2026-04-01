@@ -134,8 +134,8 @@ Skills are plain Python files in `~/.finarg/skills/`. They persist across sessio
 │            ToolRegistry                  │
 │  Built-in tools + hot-loaded skills      │
 ├────────────────┬────────────────────────┤
-│  API Clients   │  User Skills           │
-│  · Ripio Trade │  ~/.finarg/skills/*.py  │
+│  API Clients   │  User Skills (SKILL.md) │
+│  · Ripio Trade │  ~/.finarg/skills/*/    │
 │  · BCRA        │  Auto-created by agent  │
 ├────────────────┴────────────────────────┤
 │  SQLite (sessions + transaction log)     │
@@ -144,8 +144,9 @@ Skills are plain Python files in `~/.finarg/skills/`. They persist across sessio
 
 **Key design decisions:**
 
-- **Fully async** — httpx + asyncio throughout, native Textual integration
-- **Tool registry pattern** — tools self-register at import time, skills hot-load without restart
+- **Fully async** — httpx + asyncio throughout
+- **Tool registry pattern** — tools self-register at import time
+- **Skills = documents** — SKILL.md files with YAML frontmatter (like Hermes), not executable code
 - **HMAC-SHA256 auth** — Ripio Trade API signing implemented correctly per their spec
 - **Confirmation flow** — withdraw_crypto never executes without explicit user approval (enforced at prompt level via SOUL.md)
 - **Provider abstraction** — swap between Anthropic, OpenAI, or any OpenAI-compatible endpoint
@@ -158,9 +159,9 @@ All config lives in `~/.finarg/`:
 
 ```
 ~/.finarg/
-├── config.yaml          # Model, API settings, TUI preferences
+├── config.yaml          # Model, API settings
 ├── .env                 # API keys (never committed)
-├── skills/              # User-created skills (Python files)
+├── skills/              # Skills (SKILL.md documents, created by agent)
 └── finarg.db            # SQLite (sessions + transaction log)
 ```
 
@@ -194,6 +195,23 @@ ANTHROPIC_API_KEY=sk-ant-...
 RIPIO_TRADE_API_KEY=your-key
 RIPIO_TRADE_API_SECRET=your-secret
 ```
+
+---
+
+## Project context files
+
+You can create a `.finarg.md` file in any directory to give the agent project-specific context. When you run `finarg` from that directory, the agent reads it automatically.
+
+Example `.finarg.md`:
+
+```markdown
+# My trading setup
+- Ripio account has BTC, ETH, and USDC
+- Max 100 USDC per transaction
+- Transfers go to wallet 0x1234...
+```
+
+Also supports `AGENTS.md` and `CLAUDE.md` (for compatibility with other tools). Files are capped at 20,000 chars.
 
 ---
 
