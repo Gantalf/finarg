@@ -41,6 +41,9 @@ dev = [
 [project.scripts]
 finarg = "finarg.cli:main"
 
+[tool.setuptools.package-data]
+finarg = ["tui/themes/*.tcss", "SOUL.md"]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
