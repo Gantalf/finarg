@@ -1,7 +1,7 @@
 """Toolset definitions for Finarg.
 
 Each toolset groups related tools so the agent configuration can enable or
-disable entire categories at once.
+disable entire categories at once. Follows Hermes toolsets.py pattern.
 """
 
 from __future__ import annotations
@@ -19,16 +19,27 @@ TOOLSETS: dict[str, dict[str, object]] = {
         "description": "Market data and exchange rates",
         "tools": ["get_ticker", "get_dolar_rates"],
     },
-    "skills": {
-        "description": "Skill management (create, list, delete)",
-        "tools": ["create_skill", "list_skills", "delete_skill"],
-    },
     "web": {
         "description": "Web search and webpage reading",
         "tools": ["web_search", "read_webpage"],
     },
     "browser": {
         "description": "Headless browser (navigate, click, type, scroll)",
-        "tools": ["browser_navigate", "browser_snapshot", "browser_click", "browser_type", "browser_scroll", "browser_back", "browser_close"],
+        "tools": [
+            "browser_navigate", "browser_snapshot", "browser_click",
+            "browser_type", "browser_scroll", "browser_back", "browser_close",
+        ],
+    },
+    "terminal": {
+        "description": "Execute shell commands",
+        "tools": ["terminal"],
+    },
+    "file": {
+        "description": "File operations (read, write, patch, search)",
+        "tools": ["read_file", "write_file", "patch", "search_files"],
+    },
+    "skills": {
+        "description": "Skill management and discovery",
+        "tools": ["skills_list", "skill_view", "skill_manage"],
     },
 }

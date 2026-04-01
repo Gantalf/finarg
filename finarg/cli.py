@@ -380,27 +380,26 @@ def _build_agent(config):
     from finarg.constants import DB_FILE, SKILLS_DIR
     from finarg.tools.registry import registry
 
-    # Load built-in tools
+    # Load built-in tools (matches Hermes _discover_tools pattern)
     from finarg.tools.wallet import register_wallet_tools
     from finarg.tools.transfer import register_transfer_tools
     from finarg.tools.market_data import register_market_data_tools
-
     from finarg.tools.web import register_web_tools
+    from finarg.tools.browser import register_browser_tools
+    from finarg.tools.terminal import register_terminal_tools
+    from finarg.tools.file_tools import register_file_tools
+    from finarg.tools.skill_manager import register_skill_manager_tools
+    from finarg.tools.skills import register_skills_tools
 
     register_wallet_tools()
     register_transfer_tools()
     register_market_data_tools()
     register_web_tools()
-
-    from finarg.tools.browser import register_browser_tools
     register_browser_tools()
-
-    # skill_creator registers itself on import
-    import finarg.tools.skill_creator  # noqa: F401
-
-    # Load user skills
-    SKILLS_DIR.mkdir(parents=True, exist_ok=True)
-    registry.load_skills_dir(SKILLS_DIR)
+    register_terminal_tools()
+    register_file_tools()
+    register_skill_manager_tools()
+    register_skills_tools()
 
     # Build the right provider based on config
     llm_provider = _build_provider(config.model.provider, api_key, config.model.default)

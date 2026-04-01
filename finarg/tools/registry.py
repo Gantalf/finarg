@@ -31,6 +31,7 @@ class ToolEntry:
     handler: Callable[[dict[str, Any]], Awaitable[str]]
     emoji: str = "\U0001f527"
     source: str = "builtin"  # "builtin" | "skill"
+    check_fn: Callable[[], bool] | None = None  # availability check
 
 
 class ToolRegistry:
@@ -59,8 +60,9 @@ class ToolRegistry:
         emoji: str = "\U0001f527",
         *,
         source: str = "builtin",
+        check_fn: Callable[[], bool] | None = None,
     ) -> None:
-        """Register a tool.  Raises ``ValueError`` on duplicate names."""
+        """Register a tool.  Skips silently on duplicate names."""
         if name in self._tools:
             log.debug("Tool '%s' already registered, skipping", name)
             return
@@ -72,6 +74,7 @@ class ToolRegistry:
             handler=handler,
             emoji=emoji,
             source=source,
+            check_fn=check_fn,
         )
         log.debug("Registered tool %s (toolset=%s, source=%s)", name, toolset, source)
 
@@ -116,6 +119,13 @@ class ToolRegistry:
         for entry in self._tools.values():
             if enabled_toolsets is not None and entry.toolset not in enabled_toolsets:
                 continue
+            # Skip tools whose check_fn returns False
+            if entry.check_fn is not None:
+                try:
+                    if not entry.check_fn():
+                        continue
+                except Exception:
+                    continue
             defs.append(
                 {
                     "type": "function",
