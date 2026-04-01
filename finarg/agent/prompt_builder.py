@@ -67,15 +67,25 @@ def build_skills_prompt() -> str:
     if not SKILLS_DIR.is_dir():
         return ""
 
+    import os
+
     skills: list[dict[str, str]] = []
     for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
         try:
             frontmatter = _parse_frontmatter(skill_md)
             if frontmatter:
-                skills.append({
+                entry = {
                     "name": frontmatter.get("name", skill_md.parent.name),
                     "description": frontmatter.get("description", ""),
-                })
+                }
+                # Check prerequisites
+                prereqs = frontmatter.get("prerequisites", {})
+                if isinstance(prereqs, dict):
+                    env_vars = prereqs.get("env_vars", [])
+                    missing = [v for v in env_vars if not os.getenv(v)]
+                    if missing:
+                        entry["missing"] = ", ".join(missing)
+                skills.append(entry)
         except Exception:
             log.debug("Failed to parse skill: %s", skill_md, exc_info=True)
 
@@ -84,7 +94,10 @@ def build_skills_prompt() -> str:
 
     lines = ["## Available skills", "Use `skill_view` to load full instructions for any skill.", ""]
     for s in skills:
-        lines.append(f"- **{s['name']}**: {s['description']}")
+        line = f"- **{s['name']}**: {s['description']}"
+        if "missing" in s:
+            line += f" ⚠️ Missing: {s['missing']} (configure with `finarg config set`)"
+        lines.append(line)
 
     return "\n".join(lines)
 

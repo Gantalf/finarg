@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -59,11 +60,22 @@ def _find_all_skills() -> list[dict[str, Any]]:
             continue
 
         fm = _parse_frontmatter(text)
-        results.append({
+        entry: dict[str, Any] = {
             "name": fm.get("name", name),
             "description": str(fm.get("description", "")),
             "path": str(skill_dir),
-        })
+        }
+
+        # Check prerequisites (env_vars)
+        prereqs = fm.get("prerequisites", {})
+        if isinstance(prereqs, dict):
+            env_vars = prereqs.get("env_vars", [])
+            if env_vars:
+                missing = [v for v in env_vars if not os.getenv(v)]
+                if missing:
+                    entry["missing_env_vars"] = missing
+
+        results.append(entry)
 
     results.sort(key=lambda s: s["name"])
     return results
