@@ -337,7 +337,9 @@ def _run_uninstall() -> None:
     console.print()
     console.print(
         Panel(
-            "[bold #00ff88]Finarg completely removed.[/]\n"
+            "[bold #00ff88]Finarg completely removed.[/]\n\n"
+            "[#8892b0]Note: pipx may have added ~/.local/bin to your PATH.\n"
+            "To remove it, edit ~/.bashrc or ~/.zshrc and remove the pipx line.[/]\n\n"
             "To reinstall:\n"
             "  curl -fsSL https://raw.githubusercontent.com/Gantalf/finarg/main/scripts/install.sh | bash",
             border_style="#00ff88",

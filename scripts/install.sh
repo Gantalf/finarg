@@ -96,11 +96,12 @@ fi
 
 # ── Install Finarg ──────────────────────────────────────────────────
 info "Installing Finarg..."
+REPO_URL="git+https://github.com/Gantalf/finarg.git"
 if command -v pipx &>/dev/null; then
-    pipx install finarg 2>/dev/null || pipx install git+https://github.com/Gantalf/finarg.git
+    pipx install --force "$REPO_URL" 2>/dev/null
     ok "Installed via pipx (isolated environment)"
 else
-    $PYTHON -m pip install --user finarg 2>/dev/null || $PYTHON -m pip install --user git+https://github.com/Gantalf/finarg.git
+    $PYTHON -m pip install --user "$REPO_URL"
     ok "Installed via pip"
 fi
 
@@ -139,7 +140,7 @@ fi
 
 # ── Create config directory ─────────────────────────────────────────
 FINARG_HOME="$HOME/.finarg"
-mkdir -p "$FINARG_HOME/skills"
+mkdir -p "$FINARG_HOME/skills" "$FINARG_HOME/memories"
 ok "Config directory: $FINARG_HOME"
 
 # ── Verify ──────────────────────────────────────────────────────────
@@ -166,5 +167,5 @@ printf "  ╚══════════════════════�
 printf "  ${BOLD}Next steps:${NC}\n\n"
 printf "    ${CYAN}source ~/.bashrc${NC}      # reload shell (or: source ~/.zshrc)\n"
 printf "    ${CYAN}finarg init${NC}           # setup wizard (API keys)\n"
-printf "    ${CYAN}finarg${NC}                # launch the terminal UI\n\n"
+printf "    ${CYAN}finarg${NC}                # start chatting\n\n"
 printf "  ${BOLD}Docs:${NC} https://github.com/Gantalf/finarg\n\n"
