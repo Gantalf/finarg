@@ -1,4 +1,4 @@
-"""Ripio Trade API client (v4)."""
+"""Ripio Trade API client."""
 from __future__ import annotations
 
 import base64
@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import os
 import time
+from urllib.parse import urlparse
 
 from finarg.api.base import BaseAPIClient
 
@@ -25,12 +26,13 @@ def get_trade_client() -> RipioTradeClient:
 
 
 class RipioTradeClient(BaseAPIClient):
-    """Client for the Ripio Trade REST API.
+    """Client for the Ripio Trade API.
 
-    Authentication uses HMAC-SHA256 signatures as required by the platform.
+    Authentication uses HMAC-SHA256 signatures per Ripio's spec:
+    https://apidocs.ripio.com/static/api/authentication
     """
 
-    BASE_URL = "https://api.ripiotrade.co/v4"
+    BASE_URL = "https://api.ripio.com"
 
     def __init__(self, api_key: str, api_secret: str) -> None:
         super().__init__(base_url=self.BASE_URL)
@@ -38,7 +40,7 @@ class RipioTradeClient(BaseAPIClient):
         self._api_secret = api_secret
 
     # ------------------------------------------------------------------
-    # Auth
+    # Auth — matches Ripio's official Python example exactly
     # ------------------------------------------------------------------
 
     def _build_auth_headers(
@@ -48,17 +50,27 @@ class RipioTradeClient(BaseAPIClient):
         body: str | None,
     ) -> dict[str, str]:
         timestamp = str(int(time.time() * 1000))
-        message = f"{timestamp}{method.upper()}{path}{body or ''}"
-        signature_bytes = hmac.new(
-            self._api_secret.encode(),
-            message.encode(),
-            hashlib.sha256,
-        ).hexdigest().encode()
-        signature = base64.b64encode(signature_bytes).decode()
+
+        # For GET: strip query params from path when signing
+        sign_path = urlparse(path).path.split("?")[0] if "?" in path else path
+
+        # Build message: timestamp + METHOD + path + body
+        message = f"{timestamp}{method.upper()}{sign_path}{body or ''}"
+
+        # HMAC-SHA256 → raw bytes → base64
+        signature = base64.b64encode(
+            hmac.new(
+                self._api_secret.encode(),
+                message.encode(),
+                hashlib.sha256,
+            ).digest()
+        ).decode()
+
         return {
+            "Content-Type": "application/json",
             "Authorization": self._api_key,
-            "X-Api-Timestamp": timestamp,
-            "X-Api-Sign": signature,
+            "Timestamp": timestamp,
+            "Signature": signature,
         }
 
     # ------------------------------------------------------------------
@@ -67,15 +79,15 @@ class RipioTradeClient(BaseAPIClient):
 
     async def get_ticker(self, pair: str) -> dict:
         """Get ticker data for a specific trading pair."""
-        return await self.get(f"/public/tickers/{pair}")
+        return await self.get(f"/trade/tickers/{pair}")
 
     async def get_tickers(self) -> list[dict]:
         """Get ticker data for all trading pairs."""
-        return await self.get("/public/tickers")  # type: ignore[return-value]
+        return await self.get("/trade/tickers")  # type: ignore[return-value]
 
     async def get_pairs(self) -> list[dict]:
         """Get all available trading pairs."""
-        return await self.get("/public/pairs")  # type: ignore[return-value]
+        return await self.get("/trade/pairs")  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Authenticated endpoints
@@ -83,11 +95,11 @@ class RipioTradeClient(BaseAPIClient):
 
     async def get_balances(self) -> list[dict]:
         """Get wallet balances for the authenticated user."""
-        return await self.get("/user/balances")  # type: ignore[return-value]
+        return await self.get("/trade/balances")  # type: ignore[return-value]
 
     async def get_deposit_address(self, currency: str) -> dict:
         """Get deposit address for a given currency."""
-        return await self.get("/wallets", params={"currency": currency})
+        return await self.get("/trade/wallets", params={"currency": currency})
 
     async def create_withdrawal(
         self,
@@ -104,11 +116,11 @@ class RipioTradeClient(BaseAPIClient):
         }
         if network is not None:
             payload["network"] = network
-        return await self.post("/withdrawals", json=payload)
+        return await self.post("/trade/withdrawals", json=payload)
 
     async def estimate_withdrawal_fee(self, currency: str, amount: str) -> dict:
         """Estimate the fee for a withdrawal."""
         return await self.get(
-            "/withdrawals/estimate-fee",
+            "/trade/withdrawals/estimate-fee",
             params={"currency": currency, "amount": amount},
         )
