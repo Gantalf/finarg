@@ -45,11 +45,24 @@ class FinargConfig(BaseModel):
 
     # Resolved from environment after loading
     anthropic_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    moonshot_api_key: Optional[str] = None
     ripio_trade_api_key: Optional[str] = None
     ripio_trade_api_secret: Optional[str] = None
 
     def has_ripio(self) -> bool:
         return bool(self.ripio_trade_api_key and self.ripio_trade_api_secret)
+
+    def get_llm_api_key(self) -> str | None:
+        """Return the API key for the configured provider."""
+        provider = self.model.provider
+        if provider == "anthropic":
+            return self.anthropic_api_key
+        elif provider == "openai":
+            return self.openai_api_key
+        elif provider == "moonshot":
+            return self.moonshot_api_key
+        return self.anthropic_api_key or self.openai_api_key or self.moonshot_api_key
 
 
 def load_config() -> FinargConfig:
@@ -65,6 +78,8 @@ def load_config() -> FinargConfig:
 
     # Resolve secrets from environment
     config.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    config.openai_api_key = os.getenv("OPENAI_API_KEY")
+    config.moonshot_api_key = os.getenv("MOONSHOT_API_KEY")
     config.ripio_trade_api_key = os.getenv("RIPIO_TRADE_API_KEY")
     config.ripio_trade_api_secret = os.getenv("RIPIO_TRADE_API_SECRET")
 

@@ -102,7 +102,14 @@ def _run_init() -> None:
 
     # Write config.yaml
     config = {
-        "model": {"default": "claude-sonnet-4-20250514", "provider": provider},
+        "model": {
+            "default": {
+                "anthropic": "claude-sonnet-4-20250514",
+                "openai": "gpt-4o",
+                "moonshot": "kimi-k2-thinking",
+            }[provider],
+            "provider": provider,
+        },
         "agent": {"max_turns": 30},
         "apis": {
             "ripio_trade": {"enabled": has_ripio},
@@ -174,12 +181,12 @@ def _build_agent(config):
     """Build the agent from config. Returns None if no API key."""
     from finarg.config.loader import FinargConfig
 
-    if not config.anthropic_api_key:
+    api_key = config.get_llm_api_key()
+    if not api_key:
         return None
 
     # Import here to avoid circular imports
     from finarg.agent.loop import FinargAgent
-    from finarg.agent.providers.anthropic import AnthropicProvider
     from finarg.agent.session import SessionStore
     from finarg.constants import DB_FILE, SKILLS_DIR
     from finarg.tools.registry import registry
@@ -200,16 +207,36 @@ def _build_agent(config):
     SKILLS_DIR.mkdir(parents=True, exist_ok=True)
     registry.load_skills_dir(SKILLS_DIR)
 
-    provider = AnthropicProvider(
-        api_key=config.anthropic_api_key,
-        model=config.model.default,
-    )
+    # Build the right provider based on config
+    llm_provider = _build_provider(config.model.provider, api_key, config.model.default)
 
     session_store = SessionStore(DB_FILE)
 
     return FinargAgent(
         config=config,
-        provider=provider,
+        provider=llm_provider,
         registry=registry,
         session_store=session_store,
     )
+
+
+def _build_provider(provider_name: str, api_key: str, model: str):
+    """Build the LLM provider based on config."""
+    if provider_name == "anthropic":
+        from finarg.agent.providers.anthropic import AnthropicProvider
+        return AnthropicProvider(api_key=api_key, model=model)
+
+    elif provider_name == "openai":
+        from finarg.agent.providers.openai_provider import OpenAIProvider
+        return OpenAIProvider(api_key=api_key, model=model)
+
+    elif provider_name == "moonshot":
+        from finarg.agent.providers.openai_provider import OpenAIProvider
+        return OpenAIProvider(
+            api_key=api_key,
+            model=model,
+            base_url="https://api.moonshot.ai/v1",
+        )
+
+    else:
+        raise ValueError(f"Unknown provider: {provider_name}. Use anthropic, openai, or moonshot.")
