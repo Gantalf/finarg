@@ -286,12 +286,16 @@ def _run_uninstall() -> None:
         shutil.rmtree(FINARG_HOME)
         console.print(f"  [#00ff88]\u2713[/] Deleted {FINARG_HOME}/")
 
-    # Uninstall the package
+    # Uninstall the package (detect pipx vs pip)
+    is_pipx = ".local/pipx/venvs" in sys.executable
     console.print("  Uninstalling finarg package...")
-    subprocess.run(
-        [sys.executable, "-m", "pip", "uninstall", "finarg", "-y"],
-        capture_output=True,
-    )
+    if is_pipx and shutil.which("pipx"):
+        subprocess.run(["pipx", "uninstall", "finarg"], capture_output=True)
+    else:
+        subprocess.run(
+            [sys.executable, "-m", "pip", "uninstall", "finarg", "-y"],
+            capture_output=True,
+        )
     console.print(f"  [#00ff88]\u2713[/] Package uninstalled")
 
     console.print()
