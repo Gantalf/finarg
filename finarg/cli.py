@@ -30,9 +30,11 @@ def main() -> None:
         from finarg import __version__
 
         console.print(f"Finarg v{__version__}")
+    elif args[0] == "config":
+        _run_config(args[1:])
     else:
         console.print(f"[red]Unknown command:[/] {args[0]}")
-        console.print("Usage: finarg [init|chat|version]")
+        console.print("Usage: finarg [init|chat|config|version]")
         sys.exit(1)
 
 
@@ -134,6 +136,77 @@ def _run_init() -> None:
             padding=(1, 4),
         )
     )
+
+
+def _run_config(args: list[str]) -> None:
+    """View or edit configuration."""
+    if not args or args[0] == "show":
+        # Show current config
+        console.print()
+        console.print("[bold #4fc3f7]Config[/]", f"({CONFIG_FILE})")
+        if CONFIG_FILE.exists():
+            console.print(CONFIG_FILE.read_text())
+        else:
+            console.print("[#8892b0]No config file. Run `finarg init`.[/]")
+
+        console.print("[bold #4fc3f7]Secrets[/]", f"({ENV_FILE})")
+        if ENV_FILE.exists():
+            for line in ENV_FILE.read_text().splitlines():
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.split("=", 1)
+                    masked = value[:4] + "..." + value[-4:] if len(value) > 12 else "****"
+                    console.print(f"  {key}={masked}")
+                else:
+                    console.print(f"  {line}")
+        else:
+            console.print("[#8892b0]No secrets file. Run `finarg init`.[/]")
+        console.print()
+
+    elif args[0] == "edit":
+        # Open in editor
+        editor = os.getenv("EDITOR", "nano")
+        if len(args) > 1 and args[1] == "secrets":
+            os.execvp(editor, [editor, str(ENV_FILE)])
+        else:
+            os.execvp(editor, [editor, str(CONFIG_FILE)])
+
+    elif args[0] == "set":
+        # Quick set: finarg config set KEY=VALUE (in .env)
+        if len(args) < 2 or "=" not in args[1]:
+            console.print("Usage: finarg config set KEY=VALUE")
+            console.print("Example: finarg config set RIPIO_TRADE_API_KEY=your-key")
+            return
+
+        key, value = args[1].split("=", 1)
+        key = key.upper()
+
+        # Read existing .env
+        env_lines: list[str] = []
+        replaced = False
+        if ENV_FILE.exists():
+            for line in ENV_FILE.read_text().splitlines():
+                if line.startswith(f"{key}="):
+                    env_lines.append(f"{key}={value}")
+                    replaced = True
+                else:
+                    env_lines.append(line)
+
+        if not replaced:
+            env_lines.append(f"{key}={value}")
+
+        ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
+        ENV_FILE.write_text("\n".join(env_lines) + "\n")
+        ENV_FILE.chmod(0o600)
+
+        masked = value[:4] + "..." + value[-4:] if len(value) > 12 else "****"
+        console.print(f"[#00ff88]\u2713[/] Set {key}={masked}")
+
+    else:
+        console.print("Usage:")
+        console.print("  finarg config              Show current config")
+        console.print("  finarg config edit          Edit config.yaml in $EDITOR")
+        console.print("  finarg config edit secrets  Edit .env in $EDITOR")
+        console.print("  finarg config set KEY=VAL   Set a secret in .env")
 
 
 def _run_tui() -> None:
