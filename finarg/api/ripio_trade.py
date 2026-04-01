@@ -79,15 +79,15 @@ class RipioTradeClient(BaseAPIClient):
 
     async def get_ticker(self, pair: str) -> dict:
         """Get ticker data for a specific trading pair."""
-        return await self.get(f"/trade/tickers/{pair}")
+        return await self.get(f"/trade/public/tickers/{pair}")
 
     async def get_tickers(self) -> list[dict]:
-        """Get ticker data for all trading pairs."""
-        return await self.get("/trade/tickers")  # type: ignore[return-value]
+        """Get 24h stats for all trading pairs."""
+        return await self.get("/trade/public/tickers")  # type: ignore[return-value]
 
     async def get_pairs(self) -> list[dict]:
         """Get all available trading pairs."""
-        return await self.get("/trade/pairs")  # type: ignore[return-value]
+        return await self.get("/trade/public/pairs")  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Authenticated endpoints
@@ -95,10 +95,10 @@ class RipioTradeClient(BaseAPIClient):
 
     async def get_balances(self) -> list[dict]:
         """Get wallet balances for the authenticated user."""
-        return await self.get("/trade/balances")  # type: ignore[return-value]
+        return await self.get("/trade/user/balances")  # type: ignore[return-value]
 
     async def get_deposit_address(self, currency: str) -> dict:
-        """Get deposit address for a given currency."""
+        """Get user wallet address for a given currency/network."""
         return await self.get("/trade/wallets", params={"currency": currency})
 
     async def create_withdrawal(
