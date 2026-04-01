@@ -5,11 +5,26 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import subprocess
+
+from finarg.constants import ENV_FILE
 
 log = logging.getLogger(__name__)
 
 MAX_OUTPUT_CHARS = 50_000
+
+
+def _load_env_vars() -> dict[str, str]:
+    """Load ~/.finarg/.env into a dict to pass to subprocesses."""
+    env = dict(os.environ)
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                env[key.strip()] = value.strip()
+    return env
 
 
 async def terminal(args: dict) -> str:
@@ -30,6 +45,7 @@ async def terminal(args: dict) -> str:
                 shell=True,
                 timeout=timeout,
                 cwd=workdir,
+                env=_load_env_vars(),
             )
             output = (result.stdout or "") + (result.stderr or "")
             if len(output) > MAX_OUTPUT_CHARS:
