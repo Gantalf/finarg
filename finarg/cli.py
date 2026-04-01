@@ -215,6 +215,7 @@ def _run_config(args: list[str]) -> None:
 
 def _run_update() -> None:
     """Update Finarg to the latest version."""
+    import shutil
     import subprocess
 
     from finarg import __version__
@@ -222,17 +223,32 @@ def _run_update() -> None:
     console.print(f"  Current version: [bold]{__version__}[/]")
     console.print("  Updating from GitHub...")
 
-    result = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--force-reinstall",
-         "git+https://github.com/Gantalf/finarg.git"],
-        capture_output=True,
-        text=True,
-    )
+    # Detect if installed via pipx (check if running from a pipx venv)
+    is_pipx = ".local/pipx/venvs" in sys.executable
+    repo_url = "git+https://github.com/Gantalf/finarg.git"
+
+    if is_pipx and shutil.which("pipx"):
+        # pipx needs reinstall to update from git
+        result = subprocess.run(
+            ["pipx", "install", "--force", repo_url],
+            capture_output=True,
+            text=True,
+        )
+    else:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--force-reinstall", repo_url],
+            capture_output=True,
+            text=True,
+        )
 
     if result.returncode == 0:
         console.print("  [#00ff88]\u2713 Updated successfully.[/] Restart finarg to use the new version.")
     else:
-        console.print(f"  [#ff4444]\u2717 Update failed:[/] {result.stderr.splitlines()[-1] if result.stderr else 'unknown error'}")
+        error_lines = result.stderr.strip().splitlines() if result.stderr else []
+        last_line = error_lines[-1] if error_lines else "unknown error"
+        console.print(f"  [#ff4444]\u2717 Update failed:[/] {last_line}")
+        if is_pipx:
+            console.print("  Try manually: pipx install --force git+https://github.com/Gantalf/finarg.git")
 
 
 def _run_uninstall() -> None:
