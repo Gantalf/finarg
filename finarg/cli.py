@@ -196,9 +196,12 @@ def _build_agent(config):
     from finarg.tools.transfer import register_transfer_tools
     from finarg.tools.market_data import register_market_data_tools
 
+    from finarg.tools.web import register_web_tools
+
     register_wallet_tools()
     register_transfer_tools()
     register_market_data_tools()
+    register_web_tools()
 
     # skill_creator registers itself on import
     import finarg.tools.skill_creator  # noqa: F401

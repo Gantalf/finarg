@@ -23,4 +23,8 @@ TOOLSETS: dict[str, dict[str, object]] = {
         "description": "Skill management (create, list, delete)",
         "tools": ["create_skill", "list_skills", "delete_skill"],
     },
+    "web": {
+        "description": "Web search and webpage reading",
+        "tools": ["web_search", "read_webpage"],
+    },
 }
