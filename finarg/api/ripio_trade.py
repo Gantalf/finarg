@@ -74,20 +74,37 @@ class RipioTradeClient(BaseAPIClient):
         }
 
     # ------------------------------------------------------------------
+    # Response unwrapping — Ripio wraps all responses in {"data": ..., "error_code": ..., "message": ...}
+    # ------------------------------------------------------------------
+
+    async def _unwrap(self, method: str, path: str, **kwargs) -> dict | list:
+        """Make a request and unwrap the Ripio response envelope."""
+        raw = await self._request(method, path, **kwargs)
+        if isinstance(raw, dict) and "data" in raw:
+            return raw["data"]
+        return raw
+
+    async def _get(self, path: str, **kwargs) -> dict | list:
+        return await self._unwrap("GET", path, **kwargs)
+
+    async def _post(self, path: str, **kwargs) -> dict | list:
+        return await self._unwrap("POST", path, **kwargs)
+
+    # ------------------------------------------------------------------
     # Public endpoints
     # ------------------------------------------------------------------
 
     async def get_ticker(self, pair: str) -> dict:
         """Get ticker data for a specific trading pair."""
-        return await self.get(f"/trade/public/tickers/{pair}")
+        return await self._get(f"/trade/public/tickers/{pair}")
 
     async def get_tickers(self) -> list[dict]:
         """Get 24h stats for all trading pairs."""
-        return await self.get("/trade/public/tickers")  # type: ignore[return-value]
+        return await self._get("/trade/public/tickers")  # type: ignore[return-value]
 
     async def get_pairs(self) -> list[dict]:
         """Get all available trading pairs."""
-        return await self.get("/trade/public/pairs")  # type: ignore[return-value]
+        return await self._get("/trade/public/pairs")  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Authenticated endpoints
@@ -95,11 +112,11 @@ class RipioTradeClient(BaseAPIClient):
 
     async def get_balances(self) -> list[dict]:
         """Get wallet balances for the authenticated user."""
-        return await self.get("/trade/user/balances")  # type: ignore[return-value]
+        return await self._get("/trade/user/balances")  # type: ignore[return-value]
 
     async def get_deposit_address(self, currency: str) -> dict:
         """Get user wallet address for a given currency/network."""
-        return await self.get("/trade/wallets", params={"currency": currency})
+        return await self._get("/trade/wallets", params={"currency": currency})
 
     async def create_withdrawal(
         self,
@@ -116,11 +133,11 @@ class RipioTradeClient(BaseAPIClient):
         }
         if network is not None:
             payload["network"] = network
-        return await self.post("/trade/withdrawals", json=payload)
+        return await self._post("/trade/withdrawals", json=payload)
 
     async def estimate_withdrawal_fee(self, currency: str, amount: str) -> dict:
         """Estimate the fee for a withdrawal."""
-        return await self.get(
+        return await self._get(
             "/trade/withdrawals/estimate-fee",
             params={"currency": currency, "amount": amount},
         )
