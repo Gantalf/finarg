@@ -1,0 +1,26 @@
+"""Toolset definitions for Finarg.
+
+Each toolset groups related tools so the agent configuration can enable or
+disable entire categories at once.
+"""
+
+from __future__ import annotations
+
+TOOLSETS: dict[str, dict[str, object]] = {
+    "wallet": {
+        "description": "Crypto wallet management",
+        "tools": ["get_balances", "get_deposit_address"],
+    },
+    "transfer": {
+        "description": "Crypto transfers and withdrawals",
+        "tools": ["withdraw_crypto"],
+    },
+    "market_data": {
+        "description": "Market data and exchange rates",
+        "tools": ["get_ticker", "get_dolar_rates"],
+    },
+    "skills": {
+        "description": "Skill management (create, list, delete)",
+        "tools": ["create_skill", "list_skills", "delete_skill"],
+    },
+}

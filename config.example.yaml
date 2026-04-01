@@ -1,0 +1,21 @@
+model:
+  default: claude-sonnet-4-20250514
+  provider: anthropic
+
+agent:
+  max_turns: 30
+
+apis:
+  ripio_trade:
+    enabled: true
+    rate_limit: 1.0
+  bcra:
+    enabled: true
+
+tui:
+  theme: dark
+  ticker_pairs:
+    - BTC_USDT
+    - ETH_USDT
+    - USDT_ARS
+  refresh_interval: 30
