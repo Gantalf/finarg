@@ -27,4 +27,8 @@ TOOLSETS: dict[str, dict[str, object]] = {
         "description": "Web search and webpage reading",
         "tools": ["web_search", "read_webpage"],
     },
+    "browser": {
+        "description": "Headless browser (navigate, click, type, scroll)",
+        "tools": ["browser_navigate", "browser_snapshot", "browser_click", "browser_type", "browser_scroll", "browser_back", "browser_close"],
+    },
 }

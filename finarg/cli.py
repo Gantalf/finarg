@@ -203,6 +203,9 @@ def _build_agent(config):
     register_market_data_tools()
     register_web_tools()
 
+    from finarg.tools.browser import register_browser_tools
+    register_browser_tools()
+
     # skill_creator registers itself on import
     import finarg.tools.skill_creator  # noqa: F401
 

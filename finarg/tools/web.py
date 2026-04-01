@@ -3,10 +3,41 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
+import socket
+from urllib.parse import urlparse
 
 log = logging.getLogger(__name__)
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return True if the URL's resolved IP is not in a private/internal range.
+
+    Blocks: 10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x, 0.0.0.0,
+    and metadata.google.internal.
+    """
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+
+        # Block known metadata hostnames
+        if hostname.lower() in ("metadata.google.internal",):
+            return False
+
+        # Resolve DNS and check all IPs
+        addrinfos = socket.getaddrinfo(hostname, None)
+        for family, _type, _proto, _canonname, sockaddr in addrinfos:
+            ip = ipaddress.ip_address(sockaddr[0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+
+        return True
+    except Exception:
+        return False
 
 
 async def web_search(args: dict) -> str:
@@ -39,12 +70,16 @@ async def web_search(args: dict) -> str:
 
 
 async def read_webpage(args: dict) -> str:
-    """Fetch and extract text content from a URL."""
+    """Fetch a URL and convert HTML to clean markdown."""
+    import html2text
     import httpx
 
     url = args.get("url", "")
     if not url:
         return json.dumps({"error": "url is required"})
+
+    if not _is_safe_url(url):
+        return json.dumps({"error": "URL blocked: resolves to private/internal IP", "url": url})
 
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
@@ -63,11 +98,15 @@ async def read_webpage(args: dict) -> str:
 
             html = response.text
 
-            # Simple HTML to text extraction
-            text = _html_to_text(html)
+            # Convert HTML to markdown
+            h = html2text.HTML2Text()
+            h.ignore_links = False
+            h.ignore_images = True
+            h.body_width = 0  # no wrapping
+            text = h.handle(html).strip()
 
             # Truncate to avoid blowing up context
-            max_chars = int(args.get("max_chars", 8000))
+            max_chars = int(args.get("max_chars", 12000))
             if len(text) > max_chars:
                 text = text[:max_chars] + "\n\n[... truncated]"
 
@@ -81,32 +120,6 @@ async def read_webpage(args: dict) -> str:
         return json.dumps({"error": f"HTTP {e.response.status_code}", "url": url})
     except Exception as e:
         return json.dumps({"error": str(e), "url": url})
-
-
-def _html_to_text(html: str) -> str:
-    """Best-effort HTML to plain text conversion without extra dependencies."""
-    import re
-
-    # Remove script and style blocks
-    text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
-
-    # Convert common block elements to newlines
-    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"</(p|div|h[1-6]|li|tr)>", "\n", text, flags=re.IGNORECASE)
-
-    # Strip remaining tags
-    text = re.sub(r"<[^>]+>", " ", text)
-
-    # Decode common entities
-    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-    text = text.replace("&quot;", '"').replace("&nbsp;", " ").replace("&#39;", "'")
-
-    # Collapse whitespace
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-
-    return text.strip()
 
 
 def register_web_tools() -> None:
@@ -143,8 +156,8 @@ def register_web_tools() -> None:
         name="read_webpage",
         toolset="web",
         description=(
-            "Fetch and read the text content of a webpage. Use this after web_search "
-            "to read full articles, documentation, or any URL."
+            "Fetch and read the content of a webpage as clean markdown. "
+            "Use this after web_search to read full articles, documentation, or any URL."
         ),
         parameters={
             "type": "object",
@@ -155,7 +168,7 @@ def register_web_tools() -> None:
                 },
                 "max_chars": {
                     "type": "integer",
-                    "description": "Max characters to return (default 8000)",
+                    "description": "Max characters to return (default 12000)",
                 },
             },
             "required": ["url"],
