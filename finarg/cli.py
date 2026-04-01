@@ -16,6 +16,24 @@ from finarg.constants import CONFIG_FILE, ENV_FILE, FINARG_HOME, SKILLS_DIR
 console = Console()
 
 
+def _install_bundled_skills() -> None:
+    """Copy bundled skills to ~/.finarg/skills/ if not already present."""
+    import shutil
+    from pathlib import Path
+
+    bundled_dir = Path(__file__).parent / "bundled_skills"
+    if not bundled_dir.is_dir():
+        return
+
+    for skill_dir in bundled_dir.iterdir():
+        if not skill_dir.is_dir():
+            continue
+        target = SKILLS_DIR / skill_dir.name
+        if not target.exists():
+            shutil.copytree(skill_dir, target)
+            console.print(f"  [#00ff88]\u2713[/] Installed bundled skill: {skill_dir.name}")
+
+
 def main() -> None:
     """Main entry point."""
     args = sys.argv[1:]
@@ -56,6 +74,9 @@ def _run_init() -> None:
     # Ensure directories exist
     FINARG_HOME.mkdir(parents=True, exist_ok=True)
     SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Copy bundled skills (only if not already present)
+    _install_bundled_skills()
 
     env_lines: list[str] = []
 

@@ -45,7 +45,7 @@ dev = [
 finarg = "finarg.cli:main"
 
 [tool.setuptools.package-data]
-finarg = ["tui/themes/*.tcss", "SOUL.md"]
+finarg = ["tui/themes/*.tcss", "SOUL.md", "bundled_skills/**/*.md"]
 
 [tool.ruff]
 target-version = "py311"
