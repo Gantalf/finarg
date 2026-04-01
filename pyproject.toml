@@ -7,7 +7,7 @@ name = "finarg"
 version = "0.1.0"
 description = "AI-powered financial agent for Argentina/LATAM"
 readme = "README.md"
-license = "MIT"
+license = "AGPL-3.0-only"
 requires-python = ">=3.11"
 authors = [{ name = "Gantalf" }]
 keywords = ["ai", "finance", "crypto", "argentina", "agent", "tui"]

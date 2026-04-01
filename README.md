@@ -39,4 +39,4 @@ User (Terminal TUI)
 
 ## License
 
-MIT
+AGPL-3.0 — Free to use and modify, but any derivative work must also be open source.
