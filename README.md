@@ -4,7 +4,7 @@
   <br>
   <em>AI-Powered Financial Agent for Argentina & LATAM</em>
   <br><br>
-  <a href="https://github.com/Gantalf/finarg/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge" alt="License: AGPL-3.0"></a>
+  <a href="https://github.com/Gantalf/finarg/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: AGPL-3.0"></a>
   <a href="https://github.com/Gantalf/finarg"><img src="https://img.shields.io/badge/Python-3.11+-green?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+"></a>
   <a href="https://github.com/Gantalf/finarg/issues"><img src="https://img.shields.io/badge/Issues-GitHub-red?style=for-the-badge&logo=github" alt="Issues"></a>
 </p>
@@ -214,6 +214,6 @@ The agent can build its own features via skills, but these are planned as built-
 
 ## License
 
-**AGPL-3.0** — Free to use and modify. Any derivative work that is distributed or deployed as a service must also be open source under the same license. See [LICENSE](LICENSE).
+**MIT** — Free to use, modify, and distribute. See [LICENSE](LICENSE).
 
 Built by [Gantalf](https://github.com/Gantalf).
