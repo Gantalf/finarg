@@ -346,18 +346,6 @@ def _run_uninstall() -> None:
     )
 
 
-def _run_tui() -> None:
-    """Launch the full TUI application."""
-    from finarg.app import FinargApp
-    from finarg.config import load_config
-
-    config = load_config()
-    agent = _build_agent(config)
-
-    app = FinargApp(agent=agent)
-    app.run()
-
-
 async def _run_chat() -> None:
     """Simple chat mode without TUI (for debugging / piping)."""
     from finarg.config import load_config

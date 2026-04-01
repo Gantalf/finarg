@@ -20,7 +20,6 @@ classifiers = [
     "Topic :: Office/Business :: Financial",
 ]
 dependencies = [
-    "textual>=0.47",
     "rich>=13.0",
     "httpx>=0.27",
     "anthropic>=0.40",
@@ -45,7 +44,7 @@ dev = [
 finarg = "finarg.cli:main"
 
 [tool.setuptools.package-data]
-finarg = ["tui/themes/*.tcss", "SOUL.md", "bundled_skills/**/*.md"]
+finarg = ["SOUL.md", "bundled_skills/**/*.md"]
 
 [tool.ruff]
 target-version = "py311"
