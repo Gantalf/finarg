@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+from functools import partial
 from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Input, Static
+from textual.worker import Worker, WorkerState
 
 from finarg.tui.widgets.balance_table import BalanceTable
 from finarg.tui.widgets.braille_chart import BrailleChart
@@ -93,15 +95,34 @@ class MainScreen(Screen):
         self._processing = True
         input_widget.placeholder = "Thinking..."
 
-        try:
-            response = await self._agent.run_conversation(
-                user_message=message,
-                tool_callback=self._on_tool_event,
-            )
-            chat.add_agent_message(response)
-        except Exception as e:
-            chat.add_error(str(e))
-        finally:
+        # Run agent in a worker thread so the TUI stays responsive
+        self.run_worker(
+            self._run_agent(message),
+            name="agent_worker",
+            exclusive=True,
+        )
+
+    async def _run_agent(self, message: str) -> str:
+        """Run the agent conversation (called in worker thread context)."""
+        return await self._agent.run_conversation(
+            user_message=message,
+            tool_callback=self._on_tool_event,
+        )
+
+    def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
+        """Handle worker completion."""
+        if event.worker.name != "agent_worker":
+            return
+
+        chat = self.query_one(ChatView)
+        input_widget = self.query_one("#user-input", Input)
+
+        if event.state == WorkerState.SUCCESS:
+            chat.add_agent_message(event.worker.result)
+        elif event.state == WorkerState.ERROR:
+            chat.add_error(str(event.worker.error))
+
+        if event.state in (WorkerState.SUCCESS, WorkerState.ERROR, WorkerState.CANCELLED):
             self._processing = False
             input_widget.placeholder = "Ask Finarg anything..."
             input_widget.focus()
