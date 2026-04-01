@@ -35,6 +35,8 @@ User (Terminal TUI)
        |                    |
    API Clients          Skills (~/.finarg/skills/*.py)
    (Ripio, BCRA)        Auto-created by the agent
+       |
+   SQLite (sessions, transaction log)
 ```
 
 ## License
