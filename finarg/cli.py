@@ -213,6 +213,27 @@ def _run_config(args: list[str]) -> None:
         console.print("  finarg config set KEY=VAL   Set a secret in .env")
 
 
+def _is_pipx_install() -> bool:
+    """Detect if finarg was installed via pipx."""
+    import shutil
+    import subprocess
+
+    # Check 1: running from a pipx venv
+    if "pipx/venvs" in sys.executable:
+        return True
+
+    # Check 2: pipx knows about finarg
+    if shutil.which("pipx"):
+        result = subprocess.run(
+            ["pipx", "list", "--short"],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0 and "finarg" in result.stdout:
+            return True
+
+    return False
+
+
 def _run_update() -> None:
     """Update Finarg to the latest version."""
     import shutil
@@ -223,12 +244,10 @@ def _run_update() -> None:
     console.print(f"  Current version: [bold]{__version__}[/]")
     console.print("  Updating from GitHub...")
 
-    # Detect if installed via pipx (check if running from a pipx venv)
-    is_pipx = ".local/pipx/venvs" in sys.executable
     repo_url = "git+https://github.com/Gantalf/finarg.git"
 
-    if is_pipx and shutil.which("pipx"):
-        # pipx needs reinstall to update from git
+    if _is_pipx_install() and shutil.which("pipx"):
+        console.print("  [#8892b0]Detected pipx install[/]")
         result = subprocess.run(
             ["pipx", "install", "--force", repo_url],
             capture_output=True,
@@ -247,8 +266,7 @@ def _run_update() -> None:
         error_lines = result.stderr.strip().splitlines() if result.stderr else []
         last_line = error_lines[-1] if error_lines else "unknown error"
         console.print(f"  [#ff4444]\u2717 Update failed:[/] {last_line}")
-        if is_pipx:
-            console.print("  Try manually: pipx install --force git+https://github.com/Gantalf/finarg.git")
+        console.print("  Try manually: pipx install --force git+https://github.com/Gantalf/finarg.git")
 
 
 def _run_uninstall() -> None:
@@ -287,9 +305,8 @@ def _run_uninstall() -> None:
         console.print(f"  [#00ff88]\u2713[/] Deleted {FINARG_HOME}/")
 
     # Uninstall the package (detect pipx vs pip)
-    is_pipx = ".local/pipx/venvs" in sys.executable
     console.print("  Uninstalling finarg package...")
-    if is_pipx and shutil.which("pipx"):
+    if _is_pipx_install() and shutil.which("pipx"):
         subprocess.run(["pipx", "uninstall", "finarg"], capture_output=True)
     else:
         subprocess.run(
