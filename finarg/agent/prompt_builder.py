@@ -1,9 +1,14 @@
-"""System prompt assembly — follows Hermes agent/prompt_builder.py patterns."""
+"""System prompt assembly — follows Hermes agent/prompt_builder.py patterns.
+
+Technical guidance lives here as constants (like Hermes), not in SOUL.md.
+SOUL.md is personality only.
+"""
 
 from __future__ import annotations
 
 import datetime
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -13,13 +18,70 @@ from finarg.constants import SKILLS_DIR, SOUL_FILE
 
 log = logging.getLogger(__name__)
 
+# ── Guidance constants (like Hermes prompt_builder.py) ──────────────
+
+TOOL_GUIDANCE = (
+    "## How to use your tools\n"
+    "- You have direct API access to Ripio and BCRA. ALWAYS use your API tools first.\n"
+    "- Use `terminal` to execute shell commands and scripts.\n"
+    "- Use `read_file`, `write_file`, `patch`, `search_files` for file operations "
+    "— do NOT use terminal for cat/head/tail/grep/sed.\n"
+    "- Use `web_search` and `read_webpage` to research APIs and documentation.\n"
+    "- Use the browser tools only for interactive web tasks that other tools cannot handle."
+)
+
+SKILLS_GUIDANCE = (
+    "## Skills guidance\n"
+    "After completing a complex task (5+ tool calls), fixing a tricky error, "
+    "or discovering a non-trivial workflow, save the approach as a "
+    "skill with skill_manage so you can reuse it next time.\n"
+    "When using a skill and finding it outdated, incomplete, or wrong, "
+    "patch it immediately with skill_manage(action='patch') — don't wait to be asked. "
+    "Skills that aren't maintained become liabilities."
+)
+
+SCRIPT_EXECUTION_GUIDANCE = (
+    "## Executing scripts\n"
+    "When running Python scripts via `terminal`, reuse the authenticated API clients "
+    "that already exist in the codebase. Don't re-implement authentication from scratch.\n"
+    "Credentials and API keys are pre-loaded as environment variables in the terminal. "
+    "Access them with `os.getenv()`.\n"
+    "Example pattern for calling any authenticated API endpoint:\n"
+    "```python\n"
+    'python3 -c "\n'
+    "import asyncio, json\n"
+    "from finarg.api.ripio_trade import get_trade_client\n"
+    "async def main():\n"
+    "    client = get_trade_client()\n"
+    "    result = await client._get('/some/endpoint')\n"
+    "    print(json.dumps(result, indent=2))\n"
+    "asyncio.run(main())\n"
+    '"\n'
+    "```\n"
+    "The `get_trade_client()` handles all authentication (HMAC signing, headers, etc.). "
+    "Use `client._get(path)` for GET and `client._post(path, json={...})` for POST.\n"
+    "If credentials are missing, tell the user to configure them with `finarg config set KEY=VALUE`."
+)
+
+TOOL_USE_ENFORCEMENT = (
+    "## Tool-use enforcement\n"
+    "You MUST use your tools to take action — do not describe what you would do "
+    "or plan to do without actually doing it. When you say you will perform an "
+    "action, you MUST immediately make the corresponding tool call in the same "
+    "response. Never end your turn with a promise of future action — execute it now.\n"
+    "Every response should either (a) contain tool calls that make progress, or "
+    "(b) deliver a final result to the user."
+)
+
+
+# ── Prompt assembly ────────────────────────────────────────────────
 
 def build_system_prompt(
     soul_path: Path | None = None,
     tools_summary: str = "",
     memory: str = "",
 ) -> str:
-    """Build the full system prompt from SOUL.md, skills, context, and memory."""
+    """Build the full system prompt from SOUL.md, guidance, skills, context, and memory."""
     soul_path = soul_path or SOUL_FILE
     parts: list[str] = []
 
@@ -36,6 +98,12 @@ def build_system_prompt(
         f"- Time: {now.strftime('%H:%M')}\n"
         f"- Timezone: {tz_name}"
     )
+
+    # Technical guidance (constant sections)
+    parts.append(TOOL_GUIDANCE)
+    parts.append(SKILLS_GUIDANCE)
+    parts.append(SCRIPT_EXECUTION_GUIDANCE)
+    parts.append(TOOL_USE_ENFORCEMENT)
 
     # Tools
     if tools_summary:
@@ -58,6 +126,8 @@ def build_system_prompt(
     return "\n\n".join(parts)
 
 
+# ── Skills prompt ──────────────────────────────────────────────────
+
 def build_skills_prompt() -> str:
     """Scan ~/.finarg/skills/ for SKILL.md files and build a compact index.
 
@@ -66,8 +136,6 @@ def build_skills_prompt() -> str:
     """
     if not SKILLS_DIR.is_dir():
         return ""
-
-    import os
 
     skills: list[dict[str, str]] = []
     for skill_md in sorted(SKILLS_DIR.glob("*/SKILL.md")):
@@ -78,7 +146,6 @@ def build_skills_prompt() -> str:
                     "name": frontmatter.get("name", skill_md.parent.name),
                     "description": frontmatter.get("description", ""),
                 }
-                # Check prerequisites
                 prereqs = frontmatter.get("prerequisites", {})
                 if isinstance(prereqs, dict):
                     env_vars = prereqs.get("env_vars", [])
@@ -101,6 +168,8 @@ def build_skills_prompt() -> str:
 
     return "\n".join(lines)
 
+
+# ── Helpers ────────────────────────────────────────────────────────
 
 def _parse_frontmatter(path: Path) -> dict | None:
     """Extract YAML frontmatter from a SKILL.md file."""
@@ -132,7 +201,6 @@ def _load_context_files() -> str:
             try:
                 content = path.read_text(encoding="utf-8").strip()
                 if content:
-                    # Cap at 20000 chars like Hermes
                     if len(content) > 20000:
                         content = content[:20000] + "\n\n[... truncated]"
                     context_parts.append(f"## Context from {filename}\n{content}")
