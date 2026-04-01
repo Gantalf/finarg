@@ -9,7 +9,7 @@ from __future__ import annotations
 TOOLSETS: dict[str, dict[str, object]] = {
     "wallet": {
         "description": "Crypto wallet management",
-        "tools": ["get_balances", "get_deposit_address"],
+        "tools": ["get_balances", "get_wallet_balances", "get_deposit_address", "wallet_transfer"],
     },
     "transfer": {
         "description": "Crypto transfers and withdrawals",

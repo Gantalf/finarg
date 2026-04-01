@@ -122,21 +122,57 @@ class RipioTradeClient(BaseAPIClient):
         """Get balances from Ripio Wallet (not trading account)."""
         return await self._get("/trade/ripio-wallet/balance")  # type: ignore[return-value]
 
-    async def create_withdrawal(
+    async def wallet_transfer(
         self,
         currency: str,
-        address: str,
         amount: str,
-        network: str | None = None,
+        direction: str,
     ) -> dict:
-        """Create a crypto withdrawal."""
+        """Transfer funds between Ripio Wallet and Ripio Trade.
+
+        Args:
+            currency: Currency code (e.g. BTC, USDC)
+            amount: Amount to transfer (string for precision)
+            direction: "FROM_WALLET" (Wallet→Trade) or "TO_WALLET" (Trade→Wallet)
+        """
+        return await self._post(
+            f"/trade/ripio-wallet/transfer/{currency}",
+            json={"amount": amount, "direction": direction},
+        )
+
+    async def create_withdrawal(
+        self,
+        currency_code: str,
+        destination: str,
+        amount: float,
+        network: str | None = None,
+        fee_included: bool = True,
+        tag: str | None = None,
+        memo: str | None = None,
+    ) -> dict:
+        """Send crypto to an external wallet address.
+
+        Args:
+            currency_code: Cryptocurrency code (e.g. BTC, ETH, USDC)
+            destination: Recipient wallet address
+            amount: Amount to send
+            network: Blockchain network (optional)
+            fee_included: Whether fee deducts from amount (default True)
+            tag: Destination tag (for currencies that support it)
+            memo: Destination memo (for currencies that support it)
+        """
         payload: dict = {
-            "currency": currency,
-            "address": address,
+            "currency_code": currency_code,
+            "destination": destination,
             "amount": amount,
+            "fee_included": fee_included,
         }
         if network is not None:
             payload["network"] = network
+        if tag is not None:
+            payload["tag"] = tag
+        if memo is not None:
+            payload["memo"] = memo
         return await self._post("/trade/withdrawals", json=payload)
 
     async def estimate_withdrawal_fee(self, currency: str, amount: str) -> dict:

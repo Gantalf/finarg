@@ -1,4 +1,4 @@
-"""Transfer tools: crypto withdrawals."""
+"""Transfer tools: send crypto to external wallets."""
 
 from __future__ import annotations
 
@@ -6,31 +6,41 @@ import json
 
 
 async def withdraw_crypto(args: dict) -> str:
-    """Execute a crypto withdrawal. The agent MUST confirm with the user before calling this."""
+    """Send crypto to an external wallet. The agent MUST confirm with the user before calling this."""
     from finarg.api.ripio_trade import get_trade_client
 
-    currency = args.get("currency", "").upper()
-    address = args.get("address", "")
-    amount = args.get("amount", "")
+    currency_code = args.get("currency_code", "").upper()
+    destination = args.get("destination", "")
+    amount = args.get("amount")
     network = args.get("network")
+    fee_included = args.get("fee_included", True)
+    tag = args.get("tag")
+    memo = args.get("memo")
 
-    if not all([currency, address, amount]):
-        return json.dumps({"error": "currency, address, and amount are all required"})
+    if not all([currency_code, destination, amount]):
+        return json.dumps({"error": "currency_code, destination, and amount are all required"})
 
     client = get_trade_client()
 
-    # First estimate the fee
-    fee_info = await client.estimate_withdrawal_fee(currency, amount)
+    # Estimate the fee first
+    try:
+        fee_info = await client.estimate_withdrawal_fee(currency_code, str(amount))
+    except Exception:
+        fee_info = {"note": "Could not estimate fee"}
 
     # Execute the withdrawal
     result = await client.create_withdrawal(
-        currency=currency,
-        address=address,
-        amount=amount,
+        currency_code=currency_code,
+        destination=destination,
+        amount=float(amount),
         network=network,
+        fee_included=fee_included,
+        tag=tag,
+        memo=memo,
     )
 
-    result["fee_estimate"] = fee_info
+    if isinstance(result, dict):
+        result["fee_estimate"] = fee_info
     return json.dumps(result, ensure_ascii=False)
 
 
@@ -43,30 +53,42 @@ def register_transfer_tools() -> None:
         toolset="transfer",
         description=(
             "Send cryptocurrency to an external wallet address. "
-            "IMPORTANT: Always show the user a summary (currency, amount, address, estimated fee) "
+            "IMPORTANT: Always show the user a summary (currency, amount, destination, estimated fee) "
             "and get explicit confirmation before calling this tool."
         ),
         parameters={
             "type": "object",
             "properties": {
-                "currency": {
+                "currency_code": {
                     "type": "string",
                     "description": "Cryptocurrency to send (e.g. BTC, ETH, USDC)",
                 },
-                "address": {
+                "destination": {
                     "type": "string",
-                    "description": "Destination wallet address",
+                    "description": "Recipient wallet address",
                 },
                 "amount": {
-                    "type": "string",
-                    "description": "Amount to send (as string to preserve precision)",
+                    "type": "number",
+                    "description": "Amount to send",
                 },
                 "network": {
                     "type": "string",
-                    "description": "Network to use (e.g. ethereum, polygon). Optional.",
+                    "description": "Blockchain network (e.g. ethereum, polygon). Optional.",
+                },
+                "fee_included": {
+                    "type": "boolean",
+                    "description": "Whether fee deducts from amount (default true)",
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "Destination tag (for currencies like XRP). Optional.",
+                },
+                "memo": {
+                    "type": "string",
+                    "description": "Destination memo (for currencies like XLM). Optional.",
                 },
             },
-            "required": ["currency", "address", "amount"],
+            "required": ["currency_code", "destination", "amount"],
         },
         handler=withdraw_crypto,
         emoji="\U0001f4e4",
