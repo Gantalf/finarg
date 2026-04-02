@@ -24,7 +24,9 @@ async def withdraw_crypto(args: dict) -> str:
 
     # Estimate the fee first
     try:
-        fee_info = await client.estimate_withdrawal_fee(currency_code, str(amount))
+        fee_info = await client.estimate_withdrawal_fee(
+            currency_code, amount=str(amount), network=network,
+        )
     except Exception:
         fee_info = {"note": "Could not estimate fee"}
 

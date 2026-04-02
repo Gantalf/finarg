@@ -106,6 +106,13 @@ class RipioTradeClient(BaseAPIClient):
         """Get all available trading pairs."""
         return await self._get("/trade/public/pairs")  # type: ignore[return-value]
 
+    async def get_currencies(self, currency_code: str | None = None) -> list[dict]:
+        """List available currencies with networks, deposit/withdraw status, and min amounts."""
+        params = {}
+        if currency_code:
+            params["currency_code"] = currency_code
+        return await self._get("/trade/public/currencies", params=params)  # type: ignore[return-value]
+
     # ------------------------------------------------------------------
     # Authenticated endpoints
     # ------------------------------------------------------------------
@@ -175,9 +182,16 @@ class RipioTradeClient(BaseAPIClient):
             payload["memo"] = memo
         return await self._post("/trade/withdrawals", json=payload)
 
-    async def estimate_withdrawal_fee(self, currency: str, amount: str) -> dict:
-        """Estimate the fee for a withdrawal."""
+    async def estimate_withdrawal_fee(
+        self, currency_code: str, amount: str | None = None, network: str | None = None,
+    ) -> dict:
+        """Estimate the miner fee for a withdrawal."""
+        params: dict = {}
+        if amount:
+            params["amount"] = amount
+        if network:
+            params["network"] = network
         return await self._get(
-            "/trade/withdrawals/estimate-fee",
-            params={"currency": currency, "amount": amount},
+            f"/trade/withdrawals/estimate-fee/{currency_code}",
+            params=params,
         )

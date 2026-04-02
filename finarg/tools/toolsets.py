@@ -17,7 +17,7 @@ TOOLSETS: dict[str, dict[str, object]] = {
     },
     "market_data": {
         "description": "Market data and exchange rates",
-        "tools": ["get_ticker", "get_dolar_rates"],
+        "tools": ["get_ticker", "get_dolar_rates", "get_currencies"],
     },
     "web": {
         "description": "Web search and webpage reading",
