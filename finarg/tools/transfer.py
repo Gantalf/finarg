@@ -31,15 +31,24 @@ async def withdraw_crypto(args: dict) -> str:
         fee_info = {"note": "Could not estimate fee"}
 
     # Execute the withdrawal
-    result = await client.create_withdrawal(
-        currency_code=currency_code,
-        destination=destination,
-        amount=str(amount),
-        network=network,
-        fee_included=fee_included,
-        tag=tag,
-        memo=memo,
-    )
+    from finarg.api.base import FinargAPIError
+
+    try:
+        result = await client.create_withdrawal(
+            currency_code=currency_code,
+            destination=destination,
+            amount=str(amount),
+            network=network,
+            fee_included=fee_included,
+            tag=tag,
+            memo=memo,
+        )
+    except FinargAPIError as e:
+        return json.dumps({
+            "error": e.message,
+            "error_code": e.status_code,
+            "details": e.response_body,
+        }, ensure_ascii=False)
 
     if isinstance(result, dict):
         result["fee_estimate"] = fee_info
