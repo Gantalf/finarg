@@ -72,7 +72,7 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 
 ---
 
-## Built-in Tools (25)
+## Built-in Tools (26)
 
 | Toolset | Tool | What it does |
 |---------|------|-------------|
@@ -83,6 +83,7 @@ Without Ripio keys, you still get AI chat + BCRA dollar rates (public API, no ke
 | **transfer** | `withdraw_crypto` | Send crypto to an external wallet address (with confirmation) |
 | **market_data** | `get_ticker` | Price and 24h stats for any trading pair |
 | | `get_dolar_rates` | Argentine dollar rates from BCRA (oficial, blue, MEP) |
+| | `get_currencies` | List available cryptos with networks, min amounts, memo/tag requirements |
 | **terminal** | `terminal` | Execute shell commands and scripts |
 | **file** | `read_file` | Read a file with line numbers and pagination |
 | | `write_file` | Write content to a file |
@@ -188,7 +189,7 @@ Session 2:
 └──────────────────┬──────────────────────┘
                    │
 ┌──────────────────▼──────────────────────┐
-│            ToolRegistry (23 tools)       │
+│            ToolRegistry (26 tools)       │
 ├────────────────┬────────────────────────┤
 │  Built-in      │  Skills (SKILL.md)     │
 │  · Ripio API   │  ~/.finarg/skills/*/   │
