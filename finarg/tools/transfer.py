@@ -55,8 +55,13 @@ def register_transfer_tools() -> None:
         toolset="transfer",
         description=(
             "Send cryptocurrency to an external wallet address. "
-            "IMPORTANT: Always show the user a summary (currency, amount, destination, estimated fee) "
-            "and get explicit confirmation before calling this tool."
+            "IMPORTANT: Always show the user a summary (currency, amount, destination, network, estimated fee) "
+            "and get explicit confirmation before calling this tool. "
+            "Use get_currencies first to verify the network is supported. "
+            "NOTE: If Ripio returns 'Wallet destination not authorized' (error 40033), "
+            "the user must authorize the destination address in the Ripio app/web first — "
+            "this cannot be done via API. Tell the user to go to Ripio > Withdrawals > "
+            "Authorized Addresses and add the address there."
         ),
         parameters={
             "type": "object",
