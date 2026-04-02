@@ -34,7 +34,7 @@ async def withdraw_crypto(args: dict) -> str:
     result = await client.create_withdrawal(
         currency_code=currency_code,
         destination=destination,
-        amount=float(amount),
+        amount=str(amount),
         network=network,
         fee_included=fee_included,
         tag=tag,

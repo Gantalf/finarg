@@ -151,7 +151,7 @@ class RipioTradeClient(BaseAPIClient):
         self,
         currency_code: str,
         destination: str,
-        amount: float,
+        amount: str,
         network: str | None = None,
         fee_included: bool = True,
         tag: str | None = None,
@@ -162,7 +162,7 @@ class RipioTradeClient(BaseAPIClient):
         Args:
             currency_code: Cryptocurrency code (e.g. BTC, ETH, USDC)
             destination: Recipient wallet address
-            amount: Amount to send
+            amount: Amount to send (string to avoid float precision issues in signature)
             network: Blockchain network (optional)
             fee_included: Whether fee deducts from amount (default True)
             tag: Destination tag (for currencies that support it)

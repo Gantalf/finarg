@@ -90,12 +90,16 @@ class BaseAPIClient:
                     await asyncio.sleep(self._rate_limit - elapsed)
                 self._last_request_time = time.monotonic()
 
-            # Build auth headers
+            # Build auth headers — serialize JSON body once and send as
+            # content= (not json=) so the signed bytes and the sent bytes
+            # are guaranteed to be identical.
             body: str | None = None
             if "json" in kwargs:
                 import json as _json
 
-                body = _json.dumps(kwargs["json"], separators=(",", ":"))
+                body = _json.dumps(kwargs.pop("json"), separators=(",", ":"))
+                kwargs["content"] = body
+                kwargs.setdefault("headers", {})
             elif "content" in kwargs:
                 body = kwargs["content"] if isinstance(kwargs["content"], str) else None
 
