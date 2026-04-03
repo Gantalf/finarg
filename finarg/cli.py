@@ -81,7 +81,7 @@ def _run_init() -> None:
     env_lines: list[str] = []
 
     # Step 1: LLM Provider
-    console.print("[bold #4fc3f7]1/3 LLM Provider[/]")
+    console.print("[bold #4fc3f7]1/2 LLM Provider[/]")
     provider = Prompt.ask(
         "  Provider",
         choices=["anthropic", "openai", "moonshot"],
@@ -104,7 +104,7 @@ def _run_init() -> None:
     console.print()
 
     # Step 2: Ripio Trade
-    console.print("[bold #4fc3f7]2/3 Ripio Trade (optional)[/]")
+    console.print("[bold #4fc3f7]2/2 Ripio Trade (optional)[/]")
     console.print("  [#8892b0]Enables wallet management and crypto transfers.[/]")
     console.print("  [#8892b0]Get your keys at: https://app.ripio.com/trade/api[/]")
 
@@ -121,33 +121,6 @@ def _run_init() -> None:
     else:
         console.print("  [#8892b0]Skipped. BCRA rates and chat still work without Ripio.[/]")
 
-    console.print()
-
-    # Step 3: AFIP/ARCA (SIRADIG)
-    console.print("[bold #4fc3f7]3/3 AFIP/ARCA — SIRADIG (optional)[/]")
-    console.print("  [#8892b0]Enables automatic tax deduction loading (Ganancias).[/]")
-    console.print("  [#8892b0]Requires your CUIT and Clave Fiscal.[/]")
-
-    has_afip = Confirm.ask("  Do you want to configure AFIP credentials?", default=False)
-    if has_afip:
-        afip_cuit = Prompt.ask("  AFIP_CUIT (sin guiones)")
-        if afip_cuit:
-            env_lines.append(f"AFIP_CUIT={afip_cuit}")
-            console.print(f"  [#00ff88]\u2713 CUIT saved[/]")
-
-        console.print()
-        console.print("  [#8892b0]La clave fiscal es necesaria para login automático en SIRADIG.[/]")
-        console.print("  [#8892b0]Sin ella, el agente abrirá el browser y vos logeas manualmente.[/]")
-        has_clave = Confirm.ask("  Do you want to save your Clave Fiscal?", default=False)
-        if has_clave:
-            afip_clave = Prompt.ask("  AFIP_CLAVE_FISCAL")
-            if afip_clave:
-                env_lines.append(f"AFIP_CLAVE_FISCAL={afip_clave}")
-                console.print("  [#00ff88]\u2713 Clave Fiscal saved[/]")
-        else:
-            console.print("  [#8892b0]OK. El agente abrirá un browser visible para que logees manualmente.[/]")
-    else:
-        console.print("  [#8892b0]Skipped. You can configure later with finarg config set[/]")
 
     # Write .env
     ENV_FILE.write_text("\n".join(env_lines) + "\n")
