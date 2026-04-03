@@ -217,8 +217,11 @@ class OpenAIProvider:
                 {"type": "text", "text": prompt},
             ]
 
+        # Kimi vision requires kimi-k2.5 model (kimi-k2-thinking doesn't support images)
+        vision_model = "kimi-k2.5" if is_kimi else self._model
+
         response = await self._client.chat.completions.create(
-            model=self._model,
+            model=vision_model,
             max_tokens=4096,
             messages=[{"role": "user", "content": content_blocks}],
         )
