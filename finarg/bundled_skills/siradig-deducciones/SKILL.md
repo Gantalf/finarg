@@ -20,6 +20,15 @@ No existe API para SIRADIG — se usa browser automation.
 
 Configurar: `finarg config set AFIP_CUIT=20XXXXXXXXX`
 
+## Cómo acceder a las credenciales
+
+Las credenciales están en variables de entorno. Para obtener sus valores usa `terminal`:
+```
+terminal(command="echo $AFIP_CUIT")        → devuelve el CUIT
+terminal(command="echo $AFIP_CLAVE_FISCAL") → devuelve la clave fiscal
+```
+Usá esos valores en los browser_fill. NUNCA le pidas al usuario que te los repita si ya los configuró.
+
 ## Flow completo
 
 ### Paso 1: Leer la factura
