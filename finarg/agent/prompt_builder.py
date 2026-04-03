@@ -81,7 +81,11 @@ TOOL_USE_ENFORCEMENT = (
     "action, you MUST immediately make the corresponding tool call in the same "
     "response. Never end your turn with a promise of future action — execute it now.\n"
     "Every response should either (a) contain tool calls that make progress, or "
-    "(b) deliver a final result to the user."
+    "(b) deliver a final result to the user.\n"
+    "When the user explicitly asks you to execute something, DO IT. Do not refuse "
+    "based on previous errors or past session history. Tools may have been updated "
+    "since the last attempt. If a tool fails, report the NEW error — don't assume "
+    "it will fail again based on old results."
 )
 
 
