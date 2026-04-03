@@ -51,27 +51,32 @@ Mostrar los datos extraídos y pedir:
 
 ### Paso 3: Login en AFIP
 
+IMPORTANTE: Siempre usar `headed=true` y `session_name="afip"` en browser_navigate.
+Esto abre una ventana visible y persiste la sesión (cookies) entre reinicios.
+
 URL: `https://auth.afip.gob.ar/contribuyente_/login.xhtml`
 
-**Con clave fiscal guardada:**
-1. `browser_navigate` a la URL de login
-2. `browser_snapshot` para ver el estado
-3. Buscar el campo CUIT: selector `[id="F1:username"]`
-4. `browser_type` el CUIT
-5. Click en "Siguiente": selector `[id="F1:btnSiguiente"]`
-6. Esperar carga
-7. `browser_snapshot` — verificar que aparece el campo de contraseña
-8. Buscar campo contraseña: `[id="F1:password"]`
-9. `browser_type` la clave fiscal
-10. Click en "Ingresar": `[id="F1:btnIngresar"]`
+**Primer intento — sesión guardada:**
+1. `browser_navigate(url="https://auth.afip.gob.ar/contribuyente_/login.xhtml", headed=true, session_name="afip")`
+2. `browser_snapshot` — si ya aparece el portal/servicios, la sesión está activa. Ir al paso 4.
+
+**Con clave fiscal guardada (AFIP_CLAVE_FISCAL en env):**
+1. `browser_fill(selector='[id="F1:username"]', text=CUIT)`
+2. `browser_click(ref='[id="F1:btnSiguiente"]')`
+3. `browser_wait(target='[id="F1:password"]')`
+4. `browser_fill(selector='[id="F1:password"]', text=CLAVE_FISCAL)`
+5. `browser_click(ref='[id="F1:btnIngresar"]')`
+6. `browser_wait(target="3000")` — esperar que cargue
 
 **Si aparece captcha:**
-Decirle al usuario: "Apareció un captcha en el login de AFIP. Por favor resolvelo en el browser y avisame cuando estés logueado."
+Decirle al usuario: "Apareció un captcha en el browser visible. Resolvelo ahí y avisame."
+(El browser está visible gracias a headed=true)
 
 **Sin clave fiscal (login manual):**
-1. `browser_navigate` a la URL de login
-2. Decirle al usuario: "Abrí el browser y logueate en AFIP. Avisame cuando estés en el portal."
+1. `browser_navigate(url="https://auth.afip.gob.ar/contribuyente_/login.xhtml", headed=true, session_name="afip")`
+2. Decirle al usuario: "Abrí la ventana del browser que se abrió, logueate en AFIP, y avisame cuando estés en el portal."
 3. Esperar que el usuario confirme
+4. La sesión se guarda automáticamente — la próxima vez no necesita logear de nuevo
 
 ### Paso 4: Navegar al SIRADIG
 

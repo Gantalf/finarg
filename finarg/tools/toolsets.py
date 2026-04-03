@@ -24,10 +24,11 @@ TOOLSETS: dict[str, dict[str, object]] = {
         "tools": ["web_search", "read_webpage"],
     },
     "browser": {
-        "description": "Headless browser (navigate, click, type, scroll)",
+        "description": "Browser automation (navigate, click, fill, select, type, scroll, wait)",
         "tools": [
             "browser_navigate", "browser_snapshot", "browser_click",
-            "browser_type", "browser_scroll", "browser_back", "browser_close",
+            "browser_fill", "browser_select", "browser_type", "browser_wait",
+            "browser_scroll", "browser_back", "browser_close",
         ],
     },
     "terminal": {
