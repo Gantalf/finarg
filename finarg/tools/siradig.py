@@ -266,14 +266,26 @@ async def _handle_represented_person(page, steps: list[str]) -> None:
 
 async def _select_period(page, period: str, steps: list[str]) -> None:
     try:
-        await page.wait_for_selector(NAV["period_select"], timeout=10000)
-        await page.select_option(NAV["period_select"], period)
-        await page.click(NAV["continue_btn"])
-        await page.wait_for_load_state("networkidle")
+        # Check if period select exists (some flows skip it or pass via URL)
+        try:
+            await page.wait_for_selector(NAV["period_select"], timeout=5000)
+            await page.select_option(NAV["period_select"], period)
+            await page.click(NAV["continue_btn"])
+            await page.wait_for_load_state("networkidle")
+            steps.append(f"Selected period: {period}")
+        except Exception:
+            # Period may already be set (URL param) — check if we're in SIRADIG
+            if "codigo=" in page.url or "radig" in page.url:
+                steps.append(f"Period already set (via URL)")
+            else:
+                steps.append(f"Period selection skipped")
+
+        # Always dismiss modals after period (AFIP shows "Recordatorio" modal)
         await _dismiss_modals(page)
-        steps.append(f"Selected period: {period}")
+        await page.wait_for_timeout(1000)
+        await _dismiss_modals(page)
     except Exception as e:
-        steps.append(f"Period selection failed: {e}")
+        steps.append(f"Period error: {e}")
 
 
 # ── Tool: siradig_add_deduction ────────────────────────────────────
