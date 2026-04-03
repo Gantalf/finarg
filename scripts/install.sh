@@ -105,18 +105,22 @@ else
     ok "Installed via pip"
 fi
 
-# ── Install Playwright Chromium (for SIRADIG automation) ────────────
+# ── Install Playwright Chromium (bundled with finarg) ───────────────
 info "Installing Playwright Chromium..."
+# Playwright is a dependency of finarg — just need to download the browser
 if command -v pipx &>/dev/null; then
-    pipx runpip finarg install playwright 2>/dev/null
-    pipx run --spec finarg playwright install chromium 2>/dev/null
-elif $PYTHON -c "import playwright" 2>/dev/null; then
+    # Get the Python inside pipx's venv
+    PIPX_PYTHON="$HOME/.local/pipx/venvs/finarg/bin/python"
+    if [ -x "$PIPX_PYTHON" ]; then
+        "$PIPX_PYTHON" -m playwright install chromium 2>/dev/null
+    fi
+else
     $PYTHON -m playwright install chromium 2>/dev/null
 fi
 if [ $? -eq 0 ]; then
     ok "Playwright Chromium installed"
 else
-    warn "Playwright install failed. SIRADIG automation won't work, but everything else will."
+    warn "Playwright Chromium install failed. SIRADIG automation won't work, but everything else will."
 fi
 
 # ── Install Node.js + agent-browser (for headless browser tools) ────
