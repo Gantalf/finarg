@@ -30,3 +30,20 @@ class LLMProvider(Protocol):
         stream: bool = False,
         stream_callback: Optional[Callable[[str], None]] = None,
     ) -> LLMResponse: ...
+
+    async def analyze_visual(
+        self,
+        file_base64: str,
+        media_type: str,
+        prompt: str,
+    ) -> str:
+        """Analyze a visual file (PDF or image) with the LLM.
+
+        Args:
+            file_base64: Base64-encoded file content
+            media_type: MIME type (image/png, image/jpeg, application/pdf, etc.)
+            prompt: What to extract or analyze
+        Returns:
+            The LLM's text response
+        """
+        ...

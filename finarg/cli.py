@@ -424,6 +424,11 @@ def _build_agent(config):
     # Build the right provider based on config
     llm_provider = _build_provider(config.model.provider, api_key, config.model.default)
 
+    # Visual analysis (uses the same LLM provider)
+    from finarg.tools.visual import set_visual_provider, register_visual_tools
+    set_visual_provider(llm_provider)
+    register_visual_tools()
+
     session_store = SessionStore(DB_FILE)
 
     return FinargAgent(

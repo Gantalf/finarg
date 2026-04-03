@@ -13,6 +13,31 @@ from finarg.agent.providers.base import LLMResponse, ToolCall
 log = logging.getLogger(__name__)
 
 
+def _pdf_to_image_blocks(file_base64: str) -> list[dict]:
+    """Convert a base64 PDF to a list of image_url content blocks (one per page).
+
+    Used for Kimi/Moonshot which doesn't support inline PDFs.
+    """
+    import base64
+    import fitz  # pymupdf
+
+    pdf_bytes = base64.b64decode(file_base64)
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+    blocks = []
+    for page in doc:
+        pix = page.get_pixmap(dpi=200)
+        img_bytes = pix.tobytes("png")
+        img_b64 = base64.b64encode(img_bytes).decode()
+        blocks.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+        })
+
+    doc.close()
+    return blocks
+
+
 class OpenAIProvider:
     """LLM provider using the OpenAI ChatCompletions API.
 
@@ -155,3 +180,46 @@ class OpenAIProvider:
             content="".join(text_parts),
             tool_calls=tool_calls,
         )
+
+    async def analyze_visual(
+        self,
+        file_base64: str,
+        media_type: str,
+        prompt: str,
+    ) -> str:
+        """Analyze a visual file (PDF or image) using OpenAI or Kimi."""
+        is_kimi = "moonshot" in str(getattr(self._client, '_base_url', ''))
+        is_pdf = media_type == "application/pdf"
+
+        if is_pdf and is_kimi:
+            # Kimi doesn't support PDF inline — convert pages to images
+            content_blocks = _pdf_to_image_blocks(file_base64)
+            content_blocks.append({"type": "text", "text": prompt})
+        elif is_pdf:
+            # OpenAI supports PDF natively
+            content_blocks = [
+                {
+                    "type": "file",
+                    "file": {
+                        "filename": "document.pdf",
+                        "file_data": f"data:{media_type};base64,{file_base64}",
+                    },
+                },
+                {"type": "text", "text": prompt},
+            ]
+        else:
+            # Image — works for both OpenAI and Kimi
+            content_blocks = [
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{media_type};base64,{file_base64}"},
+                },
+                {"type": "text", "text": prompt},
+            ]
+
+        response = await self._client.chat.completions.create(
+            model=self._model,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": content_blocks}],
+        )
+        return response.choices[0].message.content

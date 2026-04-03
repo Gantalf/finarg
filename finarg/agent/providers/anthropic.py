@@ -221,3 +221,44 @@ class AnthropicProvider:
             input_tokens=getattr(usage, "input_tokens", 0),
             output_tokens=getattr(usage, "output_tokens", 0),
         )
+
+    # -----------------------------------------------------------------
+
+    async def analyze_visual(
+        self,
+        file_base64: str,
+        media_type: str,
+        prompt: str,
+    ) -> str:
+        """Analyze a visual file (PDF or image) using Claude."""
+        if media_type == "application/pdf":
+            content_block = {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": file_base64,
+                },
+            }
+        else:
+            content_block = {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": file_base64,
+                },
+            }
+
+        response = await self._client.messages.create(
+            model=self._model,
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": [
+                    content_block,
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+        return response.content[0].text
