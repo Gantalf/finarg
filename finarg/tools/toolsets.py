@@ -47,4 +47,8 @@ TOOLSETS: dict[str, dict[str, object]] = {
         "description": "Persistent memory across sessions",
         "tools": ["memory"],
     },
+    "siradig": {
+        "description": "SIRADIG tax deduction automation (login + form filling)",
+        "tools": ["siradig_login", "siradig_add_deduction"],
+    },
 }

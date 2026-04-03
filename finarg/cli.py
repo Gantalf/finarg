@@ -439,6 +439,10 @@ def _build_agent(config):
     register_skill_manager_tools()
     register_skills_tools()
 
+    # SIRADIG
+    from finarg.tools.siradig import register_siradig_tools
+    register_siradig_tools()
+
     # Memory
     from finarg.tools.memory import MemoryStore, register_memory_tools, set_memory_store
 
