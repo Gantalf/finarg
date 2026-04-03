@@ -1,10 +1,7 @@
-"""SIRADIG tools: deterministic browser automation for AFIP tax deductions.
+"""SIRADIG tools: deterministic Playwright automation for AFIP tax deductions.
 
-Two tools that encapsulate full flows (no LLM decisions mid-flow):
-- siradig_login: login + navigate to SIRADIG form
-- siradig_add_deduction: fill deduction form + save
-
-Based on tomastoloza/siradig-uploader (Playwright flow replicated with agent-browser CLI).
+Replicates tomastoloza/siradig-uploader AfipService using Playwright directly.
+Two tools that encapsulate full flows — no LLM decisions mid-flow.
 """
 
 from __future__ import annotations
@@ -12,17 +9,15 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
-import subprocess
-import shutil
 import time
+from pathlib import Path
 from typing import Any
 
-from finarg.constants import ENV_FILE
+from finarg.constants import ENV_FILE, FINARG_HOME
 
 log = logging.getLogger(__name__)
 
-# ── Selectores (from siradig-uploader) ─────────────────────────────
+# ── Selectors (from siradig-uploader) ──────────────────────────────
 
 LOGIN = {
     "username": '[id="F1:username"]',
@@ -93,96 +88,16 @@ RECEIPT_TYPES = {
     "tique factura b": "6", "tique factura c": "11",
 }
 
-# ── agent-browser helpers ──────────────────────────────────────────
+# ── Persistent state ───────────────────────────────────────────────
 
-_binary: str | None = None
+AUTH_STATE_PATH = FINARG_HOME / "afip_auth_state.json"
 
-
-def _find_binary() -> str:
-    global _binary
-    if _binary:
-        return _binary
-    path = shutil.which("agent-browser")
-    if path:
-        _binary = path
-        return path
-    for c in ("/opt/homebrew/bin/agent-browser", "/usr/local/bin/agent-browser"):
-        if shutil.which(c):
-            _binary = c
-            return c
-    npx = shutil.which("npx")
-    if npx:
-        _binary = "npx agent-browser"
-        return _binary
-    raise RuntimeError("agent-browser not found")
-
-
-def _cmd(command: str, args: list[str] | None = None, timeout: int = 30) -> dict:
-    """Run agent-browser command with afip session (headed + persistent)."""
-    if args is None:
-        args = []
-    binary = _find_binary()
-    flags = ["--session", "finarg-afip", "--headed", "--session-name", "afip", "--json"]
-
-    if binary.startswith("npx "):
-        full_cmd = binary.split() + flags + [command] + args
-    else:
-        full_cmd = [binary] + flags + [command] + args
-
-    try:
-        result = subprocess.run(full_cmd, capture_output=True, text=True, timeout=timeout)
-        stdout = result.stdout.strip()
-        if result.returncode != 0:
-            return {"success": False, "error": result.stderr.strip() or "command failed"}
-        if not stdout:
-            return {"success": True}
-        return json.loads(stdout)
-    except subprocess.TimeoutExpired:
-        return {"success": False, "error": f"Timed out after {timeout}s"}
-    except json.JSONDecodeError:
-        return {"success": True, "raw": result.stdout[:300]}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-def _wait(target: str, timeout: int = 10) -> dict:
-    return _cmd("wait", [target], timeout=timeout + 5)
-
-
-def _click(selector: str) -> dict:
-    return _cmd("click", [selector])
-
-
-def _fill(selector: str, text: str) -> dict:
-    return _cmd("fill", [selector, text])
-
-
-def _select(selector: str, value: str) -> dict:
-    return _cmd("select", [selector, value])
-
-
-def _snapshot() -> dict:
-    return _cmd("snapshot", ["-c"])
-
-
-def _sleep(ms: int) -> dict:
-    return _cmd("wait", [str(ms)])
-
-
-def _dismiss_modals() -> None:
-    """Try to close any AFIP modal that may have appeared."""
-    for selector in DISMISS_SELECTORS:
-        try:
-            result = _cmd("eval", [
-                f"document.querySelector('{selector}')?.click()"
-            ], timeout=3)
-        except Exception:
-            pass
-    _sleep(500)
+# Playwright browser/page kept alive between tool calls within a session
+_browser = None
+_page = None
 
 
 def _load_env() -> dict[str, str]:
-    """Load env vars from ~/.finarg/.env."""
     env = {}
     if ENV_FILE.exists():
         for line in ENV_FILE.read_text().splitlines():
@@ -193,10 +108,62 @@ def _load_env() -> dict[str, str]:
     return env
 
 
+async def _dismiss_modals(page) -> None:
+    """Try to close any AFIP modal."""
+    for _ in range(5):
+        found = False
+        for selector in DISMISS_SELECTORS:
+            try:
+                if await page.is_visible(selector):
+                    await page.click(selector, timeout=2000)
+                    await page.wait_for_timeout(500)
+                    found = True
+            except Exception:
+                pass
+        if not found:
+            break
+
+
+async def _get_browser_and_page():
+    """Get or create Playwright browser + page with persistent auth state."""
+    global _browser, _page
+
+    if _browser and _page:
+        try:
+            # Check if page is still alive
+            await _page.title()
+            return _browser, _page
+        except Exception:
+            _browser = None
+            _page = None
+
+    from playwright.async_api import async_playwright
+
+    pw = await async_playwright().start()
+
+    storage_state = str(AUTH_STATE_PATH) if AUTH_STATE_PATH.exists() else None
+
+    _browser = await pw.chromium.launch(headless=False)
+    context = await _browser.new_context(storage_state=storage_state)
+    _page = await context.new_page()
+
+    return _browser, _page
+
+
+async def _save_auth_state():
+    """Save session cookies/storage for reuse."""
+    global _page
+    if _page:
+        try:
+            await _page.context.storage_state(path=str(AUTH_STATE_PATH))
+        except Exception:
+            pass
+
+
 # ── Tool: siradig_login ───────────────────────────────────────────
 
 async def siradig_login(args: dict[str, Any]) -> str:
-    """Login to AFIP and navigate to SIRADIG. Deterministic flow."""
+    """Login to AFIP and navigate to SIRADIG. Exact replica of siradig-uploader."""
     env = _load_env()
     cuit = env.get("AFIP_CUIT", "")
     clave = env.get("AFIP_CLAVE_FISCAL", "")
@@ -212,89 +179,109 @@ async def siradig_login(args: dict[str, Any]) -> str:
     if not clave:
         return json.dumps({
             "success": False,
-            "error": "AFIP_CLAVE_FISCAL not configured. Cannot do automatic login.",
+            "error": "AFIP_CLAVE_FISCAL not configured",
             "hint": "Run: finarg config set AFIP_CLAVE_FISCAL=yourpassword",
         })
 
-    def _run() -> dict:
+    try:
+        browser, page = await _get_browser_and_page()
         steps: list[str] = []
 
         # 1. Navigate to AFIP login
-        r = _cmd("open", ["https://auth.afip.gob.ar/contribuyente_/login.xhtml"], timeout=30)
-        if not r.get("success", True):
-            return {"success": False, "error": f"Failed to open AFIP: {r.get('error')}"}
-        steps.append("Opened AFIP login page")
+        await page.goto("https://auth.afip.gob.ar/contribuyente_/login.xhtml")
+        await page.wait_for_load_state("networkidle")
+        steps.append("Opened AFIP login")
 
-        _sleep(2000)
-
-        # 2. Check if already logged in (session persisted)
-        snap = _snapshot()
-        snap_text = json.dumps(snap).lower()
-        if "siradig" in snap_text and "trabajador" in snap_text:
-            steps.append("Already logged in (session restored)")
-            # Click SIRADIG link
-            _click(NAV["service_link"])
-            _sleep(3000)
-            steps.append("Navigated to SIRADIG")
-        else:
-            # 3. Fill CUIT
-            _fill(LOGIN["username"], cuit)
-            _sleep(500)
-            _click(LOGIN["next_btn"])
-            _sleep(2000)
-            steps.append(f"Entered CUIT: {cuit}")
-
-            # 4. Fill password
-            r = _wait(LOGIN["password"], timeout=10)
-            _fill(LOGIN["password"], clave)
-            _sleep(500)
-            _click(LOGIN["submit_btn"])
-            _sleep(3000)
-            steps.append("Entered password and submitted")
-
-            # 5. Check login success
-            snap = _snapshot()
-            snap_text = json.dumps(snap).lower()
-            if "error" in snap_text and ("clave" in snap_text or "password" in snap_text):
-                return {"success": False, "error": "Login failed. Check AFIP_CLAVE_FISCAL."}
-
-            # 6. Navigate to SIRADIG
-            _wait(NAV["service_link"], timeout=15)
-            _click(NAV["service_link"])
-            _sleep(3000)
-            steps.append("Clicked SIRADIG service link")
-
-        # 7. Handle represented person (if shown)
+        # 2. Check if already logged in (session restored)
         try:
-            _cmd("eval", [
-                f"document.querySelector('{NAV['represented_btn']}')?.click()"
-            ], timeout=3)
-            _sleep(1000)
-            steps.append("Selected represented person")
+            if await page.is_visible(NAV["service_link"]):
+                steps.append("Already logged in (session restored)")
+                # Go directly to SIRADIG
+                await page.click(NAV["service_link"])
+                new_page = await page.context.wait_for_event("page")
+                _page_ref_update(new_page)
+                await new_page.wait_for_load_state("networkidle")
+                steps.append("Navigated to SIRADIG")
+
+                await _handle_represented_person(new_page, steps)
+                await _select_period(new_page, period, steps)
+                await _save_auth_state()
+
+                return json.dumps({"success": True, "message": "Logged in and navigated to SIRADIG", "steps": steps})
         except Exception:
             pass
 
+        # 3. Fill CUIT
+        await page.fill(LOGIN["username"], cuit)
+        await page.click(LOGIN["next_btn"])
+        await page.wait_for_load_state("networkidle")
+        steps.append(f"Entered CUIT")
+
+        # 4. Fill password
+        await page.fill(LOGIN["password"], clave)
+        await page.click(LOGIN["submit_btn"])
+        await page.wait_for_load_state("networkidle")
+        steps.append("Entered password and submitted")
+
+        # 5. Save session
+        await _save_auth_state()
+        steps.append("Session saved")
+
+        # 6. Navigate to SIRADIG
+        await page.wait_for_selector(NAV["service_link"], timeout=15000)
+        await page.click(NAV["service_link"])
+
+        # SIRADIG opens in new tab
+        new_page = await page.context.wait_for_event("page")
+        _page_ref_update(new_page)
+        await new_page.wait_for_load_state("networkidle")
+        steps.append("Navigated to SIRADIG")
+
+        # 7. Handle represented person
+        await _handle_represented_person(new_page, steps)
+
         # 8. Select period
-        _wait(NAV["period_select"], timeout=10)
-        _select(NAV["period_select"], period)
-        _click(NAV["continue_btn"])
-        _sleep(2000)
+        await _select_period(new_page, period, steps)
+
+        return json.dumps({"success": True, "message": "Logged in and navigated to SIRADIG", "steps": steps})
+
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+def _page_ref_update(new_page):
+    """Update the global page reference when SIRADIG opens in a new tab."""
+    global _page
+    _page = new_page
+
+
+async def _handle_represented_person(page, steps: list[str]) -> None:
+    try:
+        await page.wait_for_selector(NAV["represented_btn"], timeout=5000)
+        await page.click(NAV["represented_btn"])
+        steps.append("Selected represented person")
+    except Exception:
+        pass
+
+
+async def _select_period(page, period: str, steps: list[str]) -> None:
+    try:
+        await page.wait_for_selector(NAV["period_select"], timeout=10000)
+        await page.select_option(NAV["period_select"], period)
+        await page.click(NAV["continue_btn"])
+        await page.wait_for_load_state("networkidle")
+        await _dismiss_modals(page)
         steps.append(f"Selected period: {period}")
-
-        # 9. Dismiss any modals
-        _dismiss_modals()
-        steps.append("Dismissed modals (if any)")
-
-        return {"success": True, "message": "Logged in and navigated to SIRADIG", "steps": steps}
-
-    result = await asyncio.to_thread(_run)
-    return json.dumps(result, ensure_ascii=False)
+    except Exception as e:
+        steps.append(f"Period selection failed: {e}")
 
 
 # ── Tool: siradig_add_deduction ────────────────────────────────────
 
 async def siradig_add_deduction(args: dict[str, Any]) -> str:
-    """Fill a deduction form in SIRADIG and save. Deterministic flow."""
+    """Fill and save a deduction in SIRADIG. Exact replica of siradig-uploader."""
+    global _page
+
     category = args.get("category", "").lower().replace(" ", "_")
     provider_cuit = args.get("provider_cuit", "")
     concept = args.get("concept", "")
@@ -306,153 +293,126 @@ async def siradig_add_deduction(args: dict[str, Any]) -> str:
     voucher_amount = args.get("voucher_amount", "")
     voucher_reimbursed = args.get("voucher_reimbursed", "")
 
-    # Validate required fields
-    missing = []
-    if not category:
-        missing.append("category")
-    if not provider_cuit:
-        missing.append("provider_cuit")
-    if not month:
-        missing.append("month")
-    if not voucher_date:
-        missing.append("voucher_date")
-    if not voucher_type:
-        missing.append("voucher_type")
-    if not voucher_pos:
-        missing.append("voucher_pos")
-    if not voucher_number:
-        missing.append("voucher_number")
-    if not voucher_amount:
-        missing.append("voucher_amount")
+    # Validate
+    missing = [f for f in ["category", "provider_cuit", "month", "voucher_date",
+                           "voucher_type", "voucher_pos", "voucher_number", "voucher_amount"]
+               if not args.get(f)]
     if missing:
-        return json.dumps({"success": False, "error": f"Missing fields: {', '.join(missing)}"})
+        return json.dumps({"success": False, "error": f"Missing: {', '.join(missing)}"})
 
-    # Resolve mappings
     category_link = CATEGORY_LINKS.get(category)
     if not category_link:
-        return json.dumps({
-            "success": False,
-            "error": f"Unknown category: {category}",
-            "available": list(CATEGORY_LINKS.keys()),
-        })
+        return json.dumps({"success": False, "error": f"Unknown category: {category}", "available": list(CATEGORY_LINKS.keys())})
 
     month_value = MONTHS.get(month)
     if not month_value:
-        return json.dumps({"success": False, "error": f"Unknown month: {month}", "available": list(MONTHS.keys())})
+        return json.dumps({"success": False, "error": f"Unknown month: {month}"})
 
     receipt_code = RECEIPT_TYPES.get(voucher_type)
     if not receipt_code:
-        return json.dumps({
-            "success": False,
-            "error": f"Unknown voucher type: {voucher_type}",
-            "available": list(RECEIPT_TYPES.keys()),
-        })
+        return json.dumps({"success": False, "error": f"Unknown voucher type: {voucher_type}", "available": list(RECEIPT_TYPES.keys())})
 
-    def _run() -> dict:
+    if not _page:
+        return json.dumps({"success": False, "error": "Not logged in. Call siradig_login first."})
+
+    try:
+        page = _page
         steps: list[str] = []
 
-        # 1. Open deductions form
-        _dismiss_modals()
+        await _dismiss_modals(page)
 
-        # Click form tab
-        _cmd("eval", [f"document.querySelector('{NAV['form_tab']}')?.click()"], timeout=5)
-        _sleep(2000)
-        steps.append("Clicked form tab")
+        # 1. Open deductions form (replica of openDeductionsForm)
+        await page.wait_for_selector(NAV["form_tab"], state="attached")
+        await page.evaluate(f"document.querySelector('{NAV['form_tab']}')?.click()")
+        await page.wait_for_load_state("networkidle")
 
         # Click deductions header
-        _cmd("eval", [
-            "const el = Array.from(document.querySelectorAll('a, span, div, td'))"
-            ".find(e => e.textContent?.includes('Deducciones y desgravaciones'));"
-            "if(el) el.click();"
-        ], timeout=5)
-        _sleep(1000)
-        steps.append("Clicked deductions section")
+        try:
+            await page.wait_for_selector(NAV["deductions_header"], timeout=5000)
+            await page.click(NAV["deductions_header"])
+            await page.wait_for_timeout(1000)
+        except Exception:
+            await page.evaluate(
+                "const t = Array.from(document.querySelectorAll('a, span, div, td'))"
+                ".find(e => e.textContent?.includes('Deducciones y desgravaciones'));"
+                "if(t) t.click();"
+            )
 
-        # Click add deduction
-        _wait(NAV["add_deduction_btn"], timeout=10)
-        _cmd("eval", [f"document.querySelector('{NAV['add_deduction_btn']}')?.click()"], timeout=5)
-        _sleep(1000)
-        steps.append("Clicked add deduction")
+        await page.wait_for_selector(NAV["add_deduction_btn"], timeout=10000)
+        await page.click(NAV["add_deduction_btn"], force=True)
+        await page.wait_for_selector(NAV["menu_container"], state="visible", timeout=5000)
+        steps.append("Opened deductions form")
 
-        # Wait for menu
-        _wait(NAV["menu_container"], timeout=5)
-
-        # 2. Select category
-        _click(category_link)
-        _sleep(2000)
+        # 2. Select category (replica of startProviderEntry)
+        await page.click(category_link)
+        await page.wait_for_load_state("networkidle")
         steps.append(f"Selected category: {category}")
 
         # 3. Fill provider CUIT
-        _fill(FORM["cuit"], provider_cuit)
-        _cmd("press", ["Tab"])
-        _sleep(1500)
-        steps.append(f"Filled provider CUIT: {provider_cuit}")
+        await page.fill(FORM["cuit"], provider_cuit)
+        await page.press(FORM["cuit"], "Tab")
+        await page.wait_for_timeout(1500)
+        steps.append(f"Filled provider CUIT")
 
         # 4. Select concept (for indumentaria)
         if concept and category == "indumentaria":
             concept_value = "1" if concept.lower() == "indumentaria" else "2"
-            _select(FORM["concept"], concept_value)
+            await page.select_option(FORM["concept"], concept_value)
             steps.append(f"Selected concept: {concept}")
 
         # 5. Select month
-        _select(FORM["month"], month_value)
+        await page.select_option(FORM["month"], month_value)
         steps.append(f"Selected month: {month}")
 
-        # 6. Add voucher
-        _click(FORM["add_voucher_btn"])
-        _wait(FORM["modal_container"], timeout=5)
-        _sleep(500)
-        steps.append("Opened voucher modal")
+        # 6. Add voucher (replica of addVoucher)
+        await page.click(FORM["add_voucher_btn"])
+        await page.wait_for_selector(FORM["modal_container"], state="visible")
 
-        # 7. Fill voucher fields
-        _fill(MODAL["date"], voucher_date)
-        _select(MODAL["type"], receipt_code)
-        _fill(MODAL["pos"], voucher_pos)
-        _fill(MODAL["num"], voucher_number)
-        _fill(MODAL["amount"], voucher_amount)
+        await page.fill(MODAL["date"], voucher_date)
+        await page.select_option(MODAL["type"], receipt_code)
+        await page.fill(MODAL["pos"], voucher_pos)
+        await page.fill(MODAL["num"], voucher_number)
+        await page.fill(MODAL["amount"], voucher_amount)
+
         if voucher_reimbursed:
-            _fill(MODAL["reimbursed"], voucher_reimbursed)
-        steps.append("Filled voucher data")
+            await page.fill(MODAL["reimbursed"], voucher_reimbursed)
 
-        # 8. Submit voucher
-        _click(MODAL["submit"])
-        _sleep(2000)
-        _dismiss_modals()
-        steps.append("Submitted voucher")
+        await page.click(MODAL["submit"])
+        await page.wait_for_selector(FORM["modal_container"], state="hidden")
+        steps.append("Added voucher")
 
-        # 9. Save
-        save_selectors = [FORM["save_btn"], 'a:has-text("Guardar")', 'button:has-text("Guardar")']
-        for sel in save_selectors:
+        # 7. Save (replica of saveAndReturn)
+        for sel in [FORM["save_btn"], 'a:has-text("Guardar")', 'button:has-text("Guardar")']:
             try:
-                r = _cmd("eval", [f"document.querySelector('{sel}')?.click()"], timeout=3)
-                break
+                if await page.is_visible(sel):
+                    await page.click(sel)
+                    break
             except Exception:
                 continue
-        _sleep(2000)
-        _dismiss_modals()
+        await page.wait_for_load_state("networkidle")
+        await _dismiss_modals(page)
         steps.append("Saved deduction")
 
-        # 10. Return to dashboard
-        back_selectors = [FORM["back_btn"], 'a:has-text("Volver")', 'button:has-text("Volver")']
-        for sel in back_selectors:
+        # 8. Return
+        for sel in [FORM["back_btn"], 'a:has-text("Volver")', 'button:has-text("Volver")']:
             try:
-                _cmd("eval", [f"document.querySelector('{sel}')?.click()"], timeout=3)
-                break
+                if await page.is_visible(sel):
+                    await page.click(sel)
+                    break
             except Exception:
                 continue
-        _sleep(1000)
+        await page.wait_for_load_state("networkidle")
         steps.append("Returned to dashboard")
 
-        return {"success": True, "message": "Deduction saved successfully", "steps": steps}
+        return json.dumps({"success": True, "message": "Deduction saved", "steps": steps})
 
-    result = await asyncio.to_thread(_run)
-    return json.dumps(result, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
 
 
 # ── Registration ───────────────────────────────────────────────────
 
 def register_siradig_tools() -> None:
-    """Register SIRADIG tools."""
     from finarg.tools.registry import registry
 
     registry.register(
@@ -460,7 +420,7 @@ def register_siradig_tools() -> None:
         toolset="siradig",
         description=(
             "Login to AFIP and navigate to SIRADIG tax deductions form. "
-            "Opens a visible browser window, logs in with stored credentials (AFIP_CUIT + AFIP_CLAVE_FISCAL), "
+            "Opens a visible browser window, logs in with AFIP_CUIT + AFIP_CLAVE_FISCAL from env, "
             "navigates to SIRADIG, and selects the fiscal period. "
             "Session is persisted — subsequent calls reuse the login. "
             "Must be called BEFORE siradig_add_deduction."
@@ -468,10 +428,7 @@ def register_siradig_tools() -> None:
         parameters={
             "type": "object",
             "properties": {
-                "period": {
-                    "type": "string",
-                    "description": "Fiscal year (default: current year)",
-                },
+                "period": {"type": "string", "description": "Fiscal year (default: current year)"},
             },
             "required": [],
         },
@@ -493,44 +450,16 @@ def register_siradig_tools() -> None:
                     "type": "string",
                     "enum": ["gastos_medicos", "indumentaria", "alquiler", "seguros",
                              "servicio_domestico", "donaciones", "cuotas_sindicales"],
-                    "description": "Deduction category",
                 },
-                "provider_cuit": {
-                    "type": "string",
-                    "description": "Provider CUIT (11 digits, no dashes)",
-                },
-                "concept": {
-                    "type": "string",
-                    "description": "For indumentaria: 'Indumentaria' or 'Equipamiento'",
-                },
-                "month": {
-                    "type": "string",
-                    "description": "Month name in Spanish (e.g. 'Marzo')",
-                },
-                "voucher_date": {
-                    "type": "string",
-                    "description": "Invoice date (DD/MM/YYYY)",
-                },
-                "voucher_type": {
-                    "type": "string",
-                    "description": "Invoice type (e.g. 'Factura B', 'Factura C', 'Tique Factura B')",
-                },
-                "voucher_pos": {
-                    "type": "string",
-                    "description": "Point of sale number (4-5 digits)",
-                },
-                "voucher_number": {
-                    "type": "string",
-                    "description": "Invoice number (8 digits)",
-                },
-                "voucher_amount": {
-                    "type": "string",
-                    "description": "Total amount",
-                },
-                "voucher_reimbursed": {
-                    "type": "string",
-                    "description": "Reimbursed amount (for medical expenses, optional)",
-                },
+                "provider_cuit": {"type": "string", "description": "Provider CUIT (11 digits)"},
+                "concept": {"type": "string", "description": "For indumentaria: 'Indumentaria' or 'Equipamiento'"},
+                "month": {"type": "string", "description": "Month in Spanish (e.g. 'Marzo')"},
+                "voucher_date": {"type": "string", "description": "DD/MM/YYYY"},
+                "voucher_type": {"type": "string", "description": "e.g. 'Factura B', 'Tique Factura B'"},
+                "voucher_pos": {"type": "string", "description": "Point of sale (4-5 digits)"},
+                "voucher_number": {"type": "string", "description": "Invoice number (8 digits)"},
+                "voucher_amount": {"type": "string", "description": "Total amount"},
+                "voucher_reimbursed": {"type": "string", "description": "Reimbursed amount (optional)"},
             },
             "required": ["category", "provider_cuit", "month", "voucher_date",
                          "voucher_type", "voucher_pos", "voucher_number", "voucher_amount"],

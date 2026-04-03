@@ -105,6 +105,20 @@ else
     ok "Installed via pip"
 fi
 
+# ── Install Playwright Chromium (for SIRADIG automation) ────────────
+info "Installing Playwright Chromium..."
+if command -v pipx &>/dev/null; then
+    pipx runpip finarg install playwright 2>/dev/null
+    pipx run --spec finarg playwright install chromium 2>/dev/null
+elif $PYTHON -c "import playwright" 2>/dev/null; then
+    $PYTHON -m playwright install chromium 2>/dev/null
+fi
+if [ $? -eq 0 ]; then
+    ok "Playwright Chromium installed"
+else
+    warn "Playwright install failed. SIRADIG automation won't work, but everything else will."
+fi
+
 # ── Install Node.js + agent-browser (for headless browser tools) ────
 if command -v node &>/dev/null; then
     ok "Node.js: $(node --version)"
